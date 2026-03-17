@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/successos.db
+data/auth_info_baileys/
+.env
+*.log
+logs/

@@ -1,0 +1,15 @@
+[Unit]
+Description=SuccessOS - WhatsApp Success Coach
+After=network.target
+
+[Service]
+Type=simple
+User=successos
+WorkingDirectory=/home/successos/app
+ExecStart=/usr/bin/npx tsx src/index.ts
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "C:\\Users\\joaqu\\AppData\\Local\\nvm\\v24.14.0\\npx.cmd",
+      "runtimeArgs": ["vite", "--host"],
+      "port": 5173,
+      "cwd": "web"
+    }
+  ]
+}
