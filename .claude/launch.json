@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set PATH=C:\\Users\\joaqu\\AppData\\Local\\nvm\\v24.14.0;%PATH% && npx vite --host"],
+      "port": 5173,
+      "cwd": "successos/web"
+    }
+  ]
+}

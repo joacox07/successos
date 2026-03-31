@@ -1,0 +1,354 @@
+Mar 17 18:01:44 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:01:44 successos (npx)[74829]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:01:44 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:01:44 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:01:49 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 1.
+Mar 17 18:01:49 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:01:49 successos (npx)[74850]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:01:49 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:01:49 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:01:54 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 2.
+Mar 17 18:01:54 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:01:54 successos (npx)[74851]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:01:54 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:01:54 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:00 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 3.
+Mar 17 18:02:00 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:00 successos (npx)[74852]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:00 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:00 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:05 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 4.
+Mar 17 18:02:05 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:05 successos (npx)[74853]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:05 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:05 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:10 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 5.
+Mar 17 18:02:10 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:10 successos (npx)[74854]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:10 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:10 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:15 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 6.
+Mar 17 18:02:15 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:15 successos (npx)[74855]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:15 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:15 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:21 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 7.
+Mar 17 18:02:21 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:21 successos (npx)[74856]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:21 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:21 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:26 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 8.
+Mar 17 18:02:26 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:26 successos (npx)[74857]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:26 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:26 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:31 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 9.
+Mar 17 18:02:31 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:31 successos (npx)[74858]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:31 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:31 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:36 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 10.
+Mar 17 18:02:36 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:36 successos (npx)[74859]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:36 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:36 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:42 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 11.
+Mar 17 18:02:42 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:42 successos (npx)[74860]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:42 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:42 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:47 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 12.
+Mar 17 18:02:47 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:47 successos (npx)[74861]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:47 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:47 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:52 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 13.
+Mar 17 18:02:52 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:52 successos (npx)[74862]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:52 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:52 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:02:57 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 14.
+Mar 17 18:02:57 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:02:57 successos (npx)[74863]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:02:57 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:02:57 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:03 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 15.
+Mar 17 18:03:03 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:03 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:03 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:08 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 16.
+Mar 17 18:03:08 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:08 successos (npx)[74867]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:08 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:08 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:13 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 17.
+Mar 17 18:03:13 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:13 successos (npx)[74870]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:13 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:13 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:18 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 18.
+Mar 17 18:03:18 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:18 successos (npx)[74931]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:18 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:18 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:24 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 19.
+Mar 17 18:03:24 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:24 successos (npx)[74932]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:24 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:24 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:29 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 20.
+Mar 17 18:03:29 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:29 successos (npx)[74933]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:29 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:29 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:34 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 21.
+Mar 17 18:03:34 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:34 successos (npx)[74934]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:34 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:34 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:39 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 22.
+Mar 17 18:03:39 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:39 successos (npx)[74935]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:39 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:39 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:45 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 23.
+Mar 17 18:03:45 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:45 successos (npx)[74936]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:45 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:45 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:50 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 24.
+Mar 17 18:03:50 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:50 successos (npx)[74937]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:50 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:50 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:03:55 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 25.
+Mar 17 18:03:55 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:03:55 successos (npx)[74938]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:03:55 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:03:55 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:00 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 26.
+Mar 17 18:04:00 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:00 successos (npx)[74939]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:00 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:00 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:06 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 27.
+Mar 17 18:04:06 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:06 successos (npx)[74940]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:06 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:06 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:11 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 28.
+Mar 17 18:04:11 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:11 successos (npx)[74941]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:11 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:11 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:16 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 29.
+Mar 17 18:04:16 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:16 successos (npx)[74944]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:16 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:16 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:21 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 30.
+Mar 17 18:04:21 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:21 successos (npx)[74945]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:21 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:21 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:27 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 31.
+Mar 17 18:04:27 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:27 successos (npx)[75005]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:27 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:27 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:32 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 32.
+Mar 17 18:04:32 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:32 successos (npx)[75006]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:32 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:32 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:37 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 33.
+Mar 17 18:04:37 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:37 successos (npx)[75007]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:37 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:37 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:42 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 34.
+Mar 17 18:04:42 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:42 successos (npx)[75008]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:42 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:42 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:48 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 35.
+Mar 17 18:04:48 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:48 successos (npx)[75009]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:48 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:48 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:53 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 36.
+Mar 17 18:04:53 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:53 successos (npx)[75010]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:53 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:53 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:04:58 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 37.
+Mar 17 18:04:58 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:04:58 successos (npx)[75011]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:04:58 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:04:58 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:03 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 38.
+Mar 17 18:05:03 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:03 successos (npx)[75017]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:03 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:03 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:09 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 39.
+Mar 17 18:05:09 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:09 successos (npx)[75018]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:09 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:09 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:14 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 40.
+Mar 17 18:05:14 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:14 successos (npx)[75019]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:14 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:14 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:19 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 41.
+Mar 17 18:05:19 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:19 successos (npx)[75020]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:19 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:19 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:24 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 42.
+Mar 17 18:05:24 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:24 successos (npx)[75021]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:24 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:24 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:30 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 43.
+Mar 17 18:05:30 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:30 successos (npx)[75022]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:30 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:30 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:35 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 44.
+Mar 17 18:05:35 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:35 successos (npx)[75023]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:35 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:35 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:40 successos systemd[1]: successos.service: Scheduled restart job, restart counter is at 45.
+Mar 17 18:05:40 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:40 successos (npx)[75086]: successos.service: Failed to determine user credentials: No such process
+Mar 17 18:05:40 successos systemd[1]: successos.service: Main process exited, code=exited, status=217/USER
+Mar 17 18:05:40 successos systemd[1]: successos.service: Failed with result 'exit-code'.
+Mar 17 18:05:41 successos systemd[1]: Stopped successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:41 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:05:46 successos npx[75173]: {"level":30,"time":1773770745333,"pid":75173,"hostname":"successos","msg":"SuccessOS v2 starting..."}
+Mar 17 18:05:46 successos npx[75173]: {"level":30,"time":1773770745413,"pid":75173,"hostname":"successos","msg":"Database connected and tables verified"}
+Mar 17 18:05:46 successos npx[75173]: {"level":30,"time":1773770745413,"pid":75173,"hostname":"successos","msg":"Database ready (tables verified)"}
+Mar 17 18:05:48 successos npx[75173]: (node:75173) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Mar 17 18:05:48 successos npx[75173]: (Use `node --trace-deprecation ...` to show where the warning was created)
+Mar 17 18:05:48 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:05:49 successos npx[75173]: {"level":30,"time":1773770749499,"pid":75173,"hostname":"successos","msg":"Scheduler started (every 15 min)"}
+Mar 17 18:05:50 successos npx[75173]: {"level":30,"time":1773770750053,"pid":75173,"hostname":"successos","msg":"SuccessOS v2 running"}
+Mar 17 18:05:50 successos npx[75173]: {"level":60,"time":1773770750053,"pid":75173,"hostname":"successos","err":{"type":"Error","message":"listen EADDRINUSE: address already in use :::3000","stack":"Error: listen EADDRINUSE: address already in use :::3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at Function.listen (/home/ubuntu/successos/node_modules/express/lib/application.js:635:24)\n    at startApiServer (/home/ubuntu/successos/src/api/server.ts:30:7)\n    at main (/home/ubuntu/successos/src/index.ts:27:3)","code":"EADDRINUSE","errno":-98,"syscall":"listen","address":"::","port":3000},"msg":"Uncaught exception"}
+Mar 17 18:05:54 successos npx[75173]: {"level":40,"time":1773770753478,"pid":75173,"hostname":"successos","statusCode":405,"delay":3000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:05:56 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:06:00 successos npx[75173]: {"level":40,"time":1773770759821,"pid":75173,"hostname":"successos","statusCode":405,"delay":6000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:06:05 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:06:09 successos npx[75173]: {"level":40,"time":1773770768725,"pid":75173,"hostname":"successos","statusCode":405,"delay":12000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:06:20 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:06:25 successos npx[75173]: {"level":40,"time":1773770784997,"pid":75173,"hostname":"successos","statusCode":405,"delay":24000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:06:49 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:06:50 successos npx[75173]: {"level":40,"time":1773770809893,"pid":75173,"hostname":"successos","statusCode":405,"delay":48000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:07:37 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:07:43 successos npx[75173]: {"level":40,"time":1773770863143,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:08:43 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:08:45 successos npx[75173]: {"level":40,"time":1773770925649,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:09:45 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:09:48 successos npx[75173]: {"level":40,"time":1773770988039,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:10:48 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:10:52 successos npx[75173]: {"level":40,"time":1773771052864,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:11:52 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:11:58 successos npx[75173]: {"level":40,"time":1773771117186,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:12:57 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:13:02 successos npx[75173]: {"level":40,"time":1773771181470,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:14:01 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:14:07 successos npx[75173]: {"level":40,"time":1773771247085,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:15:00 successos npx[75173]: {"level":30,"time":1773771300046,"pid":75173,"hostname":"successos","msg":"Running scheduled check-in loop"}
+Mar 17 18:15:07 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:15:10 successos npx[75173]: {"level":40,"time":1773771309515,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:16:09 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:16:11 successos npx[75173]: {"level":40,"time":1773771371297,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:17:11 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:17:16 successos npx[75173]: {"level":40,"time":1773771435779,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:18:15 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:18:18 successos npx[75173]: {"level":40,"time":1773771497872,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:19:17 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:19:19 successos npx[75173]: {"level":40,"time":1773771559652,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:20:19 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:20:23 successos npx[75173]: {"level":40,"time":1773771622621,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:21:22 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:21:28 successos npx[75173]: {"level":40,"time":1773771687164,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:22:27 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:22:32 successos npx[75173]: {"level":40,"time":1773771751371,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:23:31 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:23:33 successos npx[75173]: {"level":40,"time":1773771812748,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:24:32 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:24:34 successos npx[75173]: {"level":40,"time":1773771873651,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:25:33 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:25:39 successos npx[75173]: {"level":40,"time":1773771938867,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:26:38 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:26:39 successos npx[75173]: {"level":40,"time":1773771999445,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:27:39 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:27:43 successos npx[75173]: {"level":40,"time":1773772063017,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:28:43 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:28:45 successos npx[75173]: {"level":40,"time":1773772125042,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:29:45 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:29:49 successos npx[75173]: {"level":40,"time":1773772188385,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:30:00 successos npx[75173]: {"level":30,"time":1773772200008,"pid":75173,"hostname":"successos","msg":"Running scheduled check-in loop"}
+Mar 17 18:30:48 successos npx[75173]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:30:50 successos npx[75173]: {"level":40,"time":1773772249495,"pid":75173,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:31:12 successos systemd[1]: Stopping successos.service - SuccessOS - WhatsApp Success Coach...
+Mar 17 18:31:12 successos npx[75173]: {"level":30,"time":1773772272236,"pid":75173,"hostname":"successos","signal":"SIGTERM","msg":"Shutting down..."}
+Mar 17 18:31:12 successos systemd[1]: successos.service: Deactivated successfully.
+Mar 17 18:31:12 successos systemd[1]: Stopped successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:31:12 successos systemd[1]: successos.service: Consumed 10.849s CPU time, 263.9M memory peak, 29.5M memory swap peak.
+Mar 17 18:31:12 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:31:17 successos npx[75774]: {"level":30,"time":1773772276604,"pid":75774,"hostname":"successos","msg":"SuccessOS v2 starting..."}
+Mar 17 18:31:17 successos npx[75774]: {"level":30,"time":1773772276620,"pid":75774,"hostname":"successos","msg":"Database connected and tables verified"}
+Mar 17 18:31:17 successos npx[75774]: {"level":30,"time":1773772276620,"pid":75774,"hostname":"successos","msg":"Database ready (tables verified)"}
+Mar 17 18:31:19 successos npx[75774]: (node:75774) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Mar 17 18:31:19 successos npx[75774]: (Use `node --trace-deprecation ...` to show where the warning was created)
+Mar 17 18:31:19 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:31:20 successos npx[75774]: {"level":30,"time":1773772280131,"pid":75774,"hostname":"successos","msg":"Scheduler started (check-ins every 15 min, analytics daily at 3am)"}
+Mar 17 18:31:20 successos npx[75774]: {"level":30,"time":1773772280702,"pid":75774,"hostname":"successos","msg":"SuccessOS v2 running"}
+Mar 17 18:31:20 successos npx[75774]: {"level":60,"time":1773772280702,"pid":75774,"hostname":"successos","err":{"type":"Error","message":"listen EADDRINUSE: address already in use :::3000","stack":"Error: listen EADDRINUSE: address already in use :::3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at Function.listen (/home/ubuntu/successos/node_modules/express/lib/application.js:635:24)\n    at startApiServer (/home/ubuntu/successos/src/api/server.ts:30:7)\n    at main (/home/ubuntu/successos/src/index.ts:27:3)","code":"EADDRINUSE","errno":-98,"syscall":"listen","address":"::","port":3000},"msg":"Uncaught exception"}
+Mar 17 18:31:22 successos npx[75774]: {"level":40,"time":1773772282447,"pid":75774,"hostname":"successos","statusCode":405,"delay":3000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:31:25 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:31:27 successos npx[75774]: {"level":40,"time":1773772287370,"pid":75774,"hostname":"successos","statusCode":405,"delay":6000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:31:33 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:31:35 successos npx[75774]: {"level":40,"time":1773772295748,"pid":75774,"hostname":"successos","statusCode":405,"delay":12000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:31:47 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:31:50 successos npx[75774]: {"level":40,"time":1773772309033,"pid":75774,"hostname":"successos","statusCode":405,"delay":24000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:32:13 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:32:19 successos npx[75774]: {"level":40,"time":1773772338281,"pid":75774,"hostname":"successos","statusCode":405,"delay":48000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:33:06 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:33:11 successos npx[75774]: {"level":40,"time":1773772390962,"pid":75774,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:34:10 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:34:13 successos npx[75774]: {"level":40,"time":1773772452372,"pid":75774,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:35:12 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:35:13 successos npx[75774]: {"level":40,"time":1773772513135,"pid":75774,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:36:13 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:36:18 successos npx[75774]: {"level":40,"time":1773772577668,"pid":75774,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:37:17 successos npx[75774]: ⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+Mar 17 18:37:21 successos npx[75774]: {"level":40,"time":1773772641667,"pid":75774,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:37:23 successos systemd[1]: Stopping successos.service - SuccessOS - WhatsApp Success Coach...
+Mar 17 18:37:23 successos systemd[1]: successos.service: Deactivated successfully.
+Mar 17 18:37:23 successos systemd[1]: Stopped successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:37:23 successos systemd[1]: successos.service: Consumed 10.545s CPU time, 302.6M memory peak, 29.5M memory swap peak.
+Mar 17 18:37:23 successos systemd[1]: Started successos.service - SuccessOS - WhatsApp Success Coach.
+Mar 17 18:37:28 successos npx[76276]: {"level":30,"time":1773772647404,"pid":76276,"hostname":"successos","msg":"SuccessOS v2 starting..."}
+Mar 17 18:37:28 successos npx[76276]: {"level":30,"time":1773772647497,"pid":76276,"hostname":"successos","msg":"Database connected and tables verified"}
+Mar 17 18:37:28 successos npx[76276]: {"level":30,"time":1773772647497,"pid":76276,"hostname":"successos","msg":"Database ready (tables verified)"}
+Mar 17 18:37:30 successos npx[76276]: (node:76276) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Mar 17 18:37:30 successos npx[76276]: (Use `node --trace-deprecation ...` to show where the warning was created)
+Mar 17 18:37:31 successos npx[76276]: {"level":30,"time":1773772650736,"pid":76276,"hostname":"successos","msg":"Scheduler started (check-ins every 15 min, analytics daily at 3am)"}
+Mar 17 18:37:31 successos npx[76276]: {"level":30,"time":1773772651119,"pid":76276,"hostname":"successos","msg":"SuccessOS v2 running"}
+Mar 17 18:37:31 successos npx[76276]: {"level":60,"time":1773772651120,"pid":76276,"hostname":"successos","err":{"type":"Error","message":"listen EADDRINUSE: address already in use :::3000","stack":"Error: listen EADDRINUSE: address already in use :::3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at Function.listen (/home/ubuntu/successos/node_modules/express/lib/application.js:635:24)\n    at startApiServer (/home/ubuntu/successos/src/api/server.ts:30:7)\n    at main (/home/ubuntu/successos/src/index.ts:27:3)","code":"EADDRINUSE","errno":-98,"syscall":"listen","address":"::","port":3000},"msg":"Uncaught exception"}
+Mar 17 18:37:33 successos npx[76276]: ======================================================
+Mar 17 18:37:33 successos npx[76276]: ✅ WHATSAPP PAIRING CODE: 33LD6V33
+Mar 17 18:37:33 successos npx[76276]: Ingresá este código en WhatsApp (Dispositivos Vinculados > Vincular con número de teléfono)
+Mar 17 18:37:33 successos npx[76276]: ======================================================
+Mar 17 18:37:34 successos npx[76276]: {"level":30,"time":1773772653546,"pid":76276,"hostname":"successos","code":"33LD6V33","msg":"WhatsApp pairing code generated"}
+Mar 17 18:37:36 successos npx[76276]: {"level":40,"time":1773772655987,"pid":76276,"hostname":"successos","statusCode":405,"delay":3000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:37:41 successos npx[76276]: {"level":40,"time":1773772661246,"pid":76276,"hostname":"successos","statusCode":405,"delay":6000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:37:48 successos npx[76276]: {"level":40,"time":1773772668416,"pid":76276,"hostname":"successos","statusCode":405,"delay":12000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:38:05 successos npx[76276]: {"level":40,"time":1773772684660,"pid":76276,"hostname":"successos","statusCode":405,"delay":24000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:38:30 successos npx[76276]: {"level":40,"time":1773772710595,"pid":76276,"hostname":"successos","statusCode":405,"delay":48000,"msg":"Disconnected, reconnecting..."}
+Mar 17 18:39:23 successos npx[76276]: {"level":40,"time":1773772763640,"pid":76276,"hostname":"successos","statusCode":405,"delay":60000,"msg":"Disconnected, reconnecting..."}

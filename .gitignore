@@ -1,0 +1,12 @@
+﻿# Seguridad - NUNCA SUBIR
+*.key
+*.pub
+ssh-key-*
+
+# Logs y Temporales
+*.log
+.claude/
+.DS_Store
+
+# Carpetas de dependencias (si usas Node.js)
+node_modules/
