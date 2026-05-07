@@ -322,6 +322,7 @@ export default function ProfilePage() {
 
   const [morningTime, setMorningTime] = useState('08:00');
   const [eveningTime, setEveningTime] = useState('21:00');
+  const [defaultCheckinDayMode, setDefaultCheckinDayMode] = useState<'today' | 'previous_day'>('today');
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaved, setScheduleSaved] = useState(false);
 
@@ -350,6 +351,7 @@ export default function ProfilePage() {
       setProfile(data);
       if (data.morningCheckIn) setMorningTime(data.morningCheckIn);
       if (data.eveningCheckIn) setEveningTime(data.eveningCheckIn);
+      setDefaultCheckinDayMode(data.defaultCheckinDayMode || 'today');
     } catch {
       // silent fail, show defaults
     } finally {
@@ -485,8 +487,13 @@ export default function ProfilePage() {
     setSavingSchedule(true);
     setScheduleSaved(false);
     try {
-      await api.updateSchedule({ morningCheckIn: morningTime, eveningCheckIn: eveningTime });
+      await api.updateSchedule({
+        morningCheckIn: morningTime,
+        eveningCheckIn: eveningTime,
+        defaultCheckinDayMode,
+      });
       setScheduleSaved(true);
+      setProfile((prev) => prev ? { ...prev, morningCheckIn: morningTime, eveningCheckIn: eveningTime, defaultCheckinDayMode } : prev);
       setTimeout(() => setScheduleSaved(false), 2500);
     } catch {
       // silent
@@ -915,6 +922,46 @@ export default function ProfilePage() {
                 onChange={(e) => setEveningTime(e.target.value)}
                 className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent-mint/50 transition-colors [color-scheme:dark]"
               />
+            </div>
+
+            <div className="h-px bg-white/[0.04]" />
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-accent-mint/15 flex items-center justify-center shrink-0">
+                  <Icon name="clipboard" size={16} className="text-accent-mint" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-text-primary">Dia por defecto del check-in rapido</p>
+                  <p className="text-[11px] text-text-muted">El wizard rapido puede cargar hoy o ayer por defecto.</p>
+                </div>
+              </div>
+              <div className="flex overflow-hidden rounded-xl border border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => setDefaultCheckinDayMode('today')}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-xs font-medium transition-all',
+                    defaultCheckinDayMode === 'today'
+                      ? 'bg-accent-mint/15 text-accent-mint'
+                      : 'text-text-muted hover:text-text-secondary'
+                  )}
+                >
+                  Completar hoy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDefaultCheckinDayMode('previous_day')}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-xs font-medium transition-all',
+                    defaultCheckinDayMode === 'previous_day'
+                      ? 'bg-accent-mint/15 text-accent-mint'
+                      : 'text-text-muted hover:text-text-secondary'
+                  )}
+                >
+                  Completar ayer
+                </button>
+              </div>
             </div>
 
             <button

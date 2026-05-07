@@ -273,10 +273,14 @@ export async function handleOnboardingMessage(
     }
 
     default: {
-      // Reset if somehow got here
+      // Reset to step 0 and send welcome (no recursion)
       await updateUser(user.id, { onboardingStep: 0, onboardingComplete: false });
       await deleteOnboardingState(user.id);
-      return handleOnboardingMessage({ ...user, onboardingStep: 0 }, text, sock, jid);
+      const response = ONBOARDING_PROMPTS.welcome;
+      await sendText(sock, jid, response);
+      await updateUser(user.id, { onboardingStep: 1 });
+      await saveState(user.id, 1, { rawAnswers: {} });
+      return response;
     }
   }
 }

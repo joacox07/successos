@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/hooks/useApi';
 import { api } from '@/lib/api';
-import type { DashboardData, MetricsData, GoalSummary, MetricEntry } from '@/lib/api';
+import type { DashboardData, MetricsData, GoalSummary, MetricEntry, PatternSummary } from '@/lib/api';
 import { cn, formatDate, formatDateFull, categoryIcon, categoryColor } from '@/lib/utils';
 import Icon from '@/components/Icon';
 import DailyCheckin from '@/components/DailyCheckin';
 import ChatCheckin from '@/components/ChatCheckin';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
+import { HabitStreakWidget } from '@/components/HabitStreakWidget';
+import { DashboardCustomizer } from '@/components/DashboardCustomizer';
 
 // ---------------------------------------------------------------------------
 // Animated counter hook
@@ -94,87 +98,35 @@ function SkeletonGoals() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Score Ring
-// ---------------------------------------------------------------------------
-const RING_RADIUS = 80;
-const RING_STROKE = 8;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-
-function ScoreRing({ score }: { score: number | null }) {
+function ScoreModule({ score }: { score: number | null }) {
   const hasScore = score !== null && score !== undefined;
   const displayValue = useCountUp(hasScore ? score : 0, 1400, hasScore);
-  const strokeOffset = hasScore
-    ? RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * (score ?? 0)) / 100
-    : RING_CIRCUMFERENCE;
-
-  // Determine ring color based on score (uses CSS variables for theming)
-  const ringColor = hasScore
-    ? score! >= 70
-      ? 'rgb(var(--color-accent-primary))'
-      : score! >= 40
-        ? 'rgb(var(--color-accent-warm))'
-        : 'rgb(var(--color-accent-tertiary))'
-    : 'rgb(var(--color-accent-primary))';
-
-  const glowColor = hasScore
-    ? score! >= 70
-      ? 'rgb(var(--color-accent-primary) / 0.6)'
-      : score! >= 40
-        ? 'rgb(var(--color-accent-warm) / 0.6)'
-        : 'rgb(var(--color-accent-tertiary) / 0.6)'
-    : 'rgb(var(--color-accent-primary) / 0.3)';
 
   return (
-    <div className="relative flex items-center justify-center py-4">
-      <svg
-        width={2 * (RING_RADIUS + RING_STROKE)}
-        height={2 * (RING_RADIUS + RING_STROKE)}
-        className="transform -rotate-90"
-      >
-        <defs>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        {/* Background track */}
-        <circle
-          cx={RING_RADIUS + RING_STROKE}
-          cy={RING_RADIUS + RING_STROKE}
-          r={RING_RADIUS}
-          fill="none"
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth={RING_STROKE}
-        />
-        {/* Animated foreground arc */}
-        <motion.circle
-          cx={RING_RADIUS + RING_STROKE}
-          cy={RING_RADIUS + RING_STROKE}
-          r={RING_RADIUS}
-          fill="none"
-          stroke={ringColor}
-          strokeWidth={RING_STROKE}
-          strokeLinecap="round"
-          strokeDasharray={RING_CIRCUMFERENCE}
-          initial={{ strokeDashoffset: RING_CIRCUMFERENCE }}
-          animate={{ strokeDashoffset: strokeOffset }}
-          transition={{ duration: 1.4, ease: 'easeOut' }}
-          filter="url(#glow)"
-          style={{ filter: `drop-shadow(0 0 8px ${glowColor})` }}
-        />
-      </svg>
-      {/* Center text */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-mono text-5xl font-bold text-text-primary text-glow-mint tracking-tight">
-          {hasScore ? displayValue : '--'}
-        </span>
-        <span className="text-xs text-text-muted uppercase tracking-widest mt-1">
-          Score del dia
-        </span>
+    <div className="relative overflow-hidden rounded-3xl border border-border-primary bg-bg-card backdrop-blur-[40px] p-8 min-h-[220px] flex flex-col justify-end group">
+      {/* Background massive text */}
+      <div className="absolute -top-10 -right-10 text-[120px] sm:text-[180px] font-display text-text-primary/[0.03] select-none pointer-events-none tracking-tighter leading-none group-hover:text-accent-mint/[0.05] transition-colors duration-700">
+        {hasScore ? displayValue : '0'}
+      </div>
+
+      {/* Real content */}
+      <div className="relative z-10 flex items-end justify-between">
+        <div>
+          <span className="text-[10px] font-mono uppercase tracking-[0.4em] text-text-secondary mb-2 block text-glow-dim">
+            Score del dia
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-6xl sm:text-7xl text-text-primary tracking-tighter">
+              {hasScore ? displayValue : '--'}
+            </span>
+            <span className="font-mono text-xl text-accent-mint">/100</span>
+          </div>
+        </div>
+
+        {/* Abstract pattern */}
+        <div className="w-12 h-12 border-2 border-dashed border-accent-mint/[0.3] rounded-full flex items-center justify-center animate-spin-slow">
+          <div className="w-1 h-1 bg-accent-mint rounded-full absolute top-1" />
+        </div>
       </div>
     </div>
   );
@@ -183,11 +135,15 @@ function ScoreRing({ score }: { score: number | null }) {
 // ---------------------------------------------------------------------------
 // Quick Metric Card
 // ---------------------------------------------------------------------------
-const METRIC_ICONS: Record<string, string> = {
-  sleep: 'sleep',
-  mood: 'mood',
-  energy: 'energy',
-};
+const ALL_METRICS: { key: string; label: string; icon: string; suffix: string; field: keyof MetricEntry }[] = [
+  { key: 'sleep', label: 'Sueño', icon: 'sleep', suffix: '/10', field: 'sleepQuality' },
+  { key: 'mood', label: 'Mood', icon: 'mood', suffix: '/10', field: 'mood' },
+  { key: 'energy', label: 'Energía', icon: 'energy', suffix: '/10', field: 'energyLevel' },
+  { key: 'exercise', label: 'Ejercicio', icon: 'exercise', suffix: 'min', field: 'exerciseDuration' },
+  { key: 'diet', label: 'Dieta', icon: 'diet', suffix: '/10', field: 'dietQuality' },
+  { key: 'focus', label: 'Foco', icon: 'target', suffix: 'h', field: 'focusHours' },
+  { key: 'rating', label: 'Día', icon: 'star', suffix: '/10', field: 'dayRating' },
+];
 
 function QuickMetric({
   label,
@@ -204,17 +160,23 @@ function QuickMetric({
   const display = useCountUp(hasValue ? value : 0, 1000, hasValue);
 
   return (
-    <div className="glass-card p-4 flex flex-col items-center gap-1.5 min-w-0">
-      <Icon name={icon} size={20} />
-      <span className="font-mono text-xl font-semibold text-text-primary">
-        {hasValue ? display : '--'}
+    <div className="relative overflow-hidden p-4 flex flex-col items-start gap-1.5 min-w-0 bg-bg-card backdrop-blur-xl border border-border-primary hover:border-accent-mint/50 transition-colors group">
+      <div className="flex w-full items-center justify-between mb-2 opacity-60">
+        <Icon name={icon} size={16} />
+        <span className="text-[9px] text-text-muted uppercase tracking-widest font-mono">
+          {label}
+        </span>
+      </div>
+      <div className="flex items-baseline gap-1 relative z-10 w-full">
+        <span className="font-display text-3xl text-text-primary group-hover:text-accent-mint transition-colors">
+          {hasValue ? display : '--'}
+        </span>
         {hasValue && suffix && (
-          <span className="text-xs text-text-muted ml-0.5">{suffix}</span>
+          <span className="text-[10px] uppercase font-mono text-text-muted">{suffix}</span>
         )}
-      </span>
-      <span className="text-[11px] text-text-muted uppercase tracking-wider truncate">
-        {label}
-      </span>
+      </div>
+      {/* decorative corner */}
+      <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/[0.1] group-hover:border-accent-mint transition-colors" />
     </div>
   );
 }
@@ -228,6 +190,13 @@ function getWeekDayLabel(dateStr: string) {
   const d = new Date(dateStr + 'T12:00:00');
   const day = d.getDay(); // 0=Sun
   return WEEK_DAYS[day === 0 ? 6 : day - 1];
+}
+
+function toISODate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function scoreColor(score: number | null): string {
@@ -259,62 +228,54 @@ function WeeklySummary({ entries }: { entries: MetricEntry[] }) {
     <div className="glass-card p-5 space-y-4">
       <h3 className="text-sm text-text-secondary font-medium">Semana</h3>
 
-      {/* Day grid */}
-      <div className="flex gap-1.5 justify-between">
+      <div className="flex gap-2 justify-between items-end border-b border-white/[0.08] pb-4">
         {entries.map((entry, i) => {
           const isToday = i === entries.length - 1;
+          const score = entry.overallScore ?? 0;
+          const height = Math.max((score / 100) * 100, 4); // min height 4px
+
           return (
-            <div key={entry.date} className="flex flex-col items-center gap-1.5 flex-1">
+            <div key={entry.date} className="flex flex-col items-center flex-1 group">
+              <div
+                className="w-full bg-bg-card-hover relative overflow-hidden group-hover:bg-text-primary/[0.06] transition-colors"
+                style={{ height: '80px' }}
+              >
+                <div
+                  className={cn(
+                    "absolute bottom-0 left-0 right-0 transition-all duration-700 ease-out",
+                    isToday ? "bg-accent-mint" : "bg-white/[0.3]"
+                  )}
+                  style={{ height: `${entry.overallScore !== null ? height : 0}%` }}
+                />
+              </div>
               <span className={cn(
-                'text-[10px] font-medium',
+                'text-[8px] font-mono mt-2 tracking-widest',
                 isToday ? 'text-accent-mint' : 'text-text-muted'
               )}>
                 {getWeekDayLabel(entry.date)}
               </span>
-              <div
-                className={cn(
-                  'w-full aspect-square rounded-lg transition-all relative overflow-hidden',
-                  entry.overallScore !== null ? scoreColor(entry.overallScore) : 'bg-white/[0.04] border border-dashed border-white/[0.08]',
-                  isToday && 'ring-1 ring-accent-mint/40'
-                )}
-                style={{
-                  opacity: entry.overallScore !== null ? scoreOpacity(entry.overallScore) : 1,
-                }}
-              >
-                {entry.overallScore !== null && (
-                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono font-bold text-white" style={{ opacity: 1 }}>
-                    {entry.overallScore}
-                  </span>
-                )}
-              </div>
-              {/* Activity dots */}
-              <div className="flex gap-[3px]">
-                {entry.exerciseDone && <div className="w-1.5 h-1.5 rounded-full bg-accent-mint/70" />}
-                {entry.mood !== null && <div className="w-1.5 h-1.5 rounded-full bg-accent-violet/70" />}
-                {(entry.focusHours ?? 0) > 0 && <div className="w-1.5 h-1.5 rounded-full bg-accent-amber/70" />}
-              </div>
             </div>
           );
         })}
       </div>
 
       {/* Weekly stats row */}
-      <div className="grid grid-cols-4 gap-2">
-        <div className="text-center">
-          <p className="font-mono text-base font-semibold text-text-primary">{avgScore ?? '--'}</p>
-          <p className="text-[10px] text-text-muted">Score</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+        <div className="text-left">
+          <p className="font-display text-xl text-text-primary mb-0.5">{avgScore ?? '--'}</p>
+          <p className="font-mono text-[8px] uppercase tracking-widest text-text-muted">Score</p>
         </div>
-        <div className="text-center">
-          <p className="font-mono text-base font-semibold text-accent-mint">{exerciseDays}/7</p>
-          <p className="text-[10px] text-text-muted">Gym</p>
+        <div className="text-left border-l border-white/[0.08] pl-2">
+          <p className="font-display text-xl text-text-primary mb-0.5">{exerciseDays}</p>
+          <p className="font-mono text-[8px] uppercase tracking-widest text-text-muted">Gym (d)</p>
         </div>
-        <div className="text-center">
-          <p className="font-mono text-base font-semibold text-accent-violet">{avgMood ?? '--'}</p>
-          <p className="text-[10px] text-text-muted">Mood</p>
+        <div className="text-left border-l border-white/[0.08] pl-2">
+          <p className="font-display text-xl text-text-primary mb-0.5">{avgMood ?? '--'}</p>
+          <p className="font-mono text-[8px] uppercase tracking-widest text-text-muted">Mood</p>
         </div>
-        <div className="text-center">
-          <p className="font-mono text-base font-semibold text-accent-amber">{totalFocus.toFixed(1)}h</p>
-          <p className="text-[10px] text-text-muted">Focus</p>
+        <div className="text-left border-l border-white/[0.08] pl-2">
+          <p className="font-display text-xl text-text-primary mb-0.5">{totalFocus.toFixed(1)}</p>
+          <p className="font-mono text-[8px] uppercase tracking-widest text-text-muted">Focus (h)</p>
         </div>
       </div>
     </div>
@@ -343,34 +304,29 @@ function GoalItem({ goal }: { goal: GoalSummary }) {
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className={cn(
-            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
-            `bg-white/[0.06]`
-          )}>
-            <Icon name={categoryIcon(goal.category)} size={16} className={categoryColor(goal.category)} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-bg-card-hover">
+            <Icon name={categoryIcon(goal.category)} size={16} style={{ color: 'rgb(var(--color-accent-primary))' }} />
           </div>
           <span className="text-sm text-text-primary font-medium truncate">
             {goal.title}
           </span>
         </div>
-        <span className={cn('font-mono text-sm font-semibold flex-shrink-0', categoryColor(goal.category))}>
+        <span className="font-mono text-sm font-semibold flex-shrink-0" style={{ color: 'rgb(var(--color-accent-primary))' }}>
           {Math.round(pct)}%
         </span>
       </div>
       {/* Progress bar */}
-      <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-1.5 w-full bg-text-primary/[0.08] overflow-hidden rounded-full">
         <motion.div
           className="h-full rounded-full"
-          style={{
-            background: `linear-gradient(90deg, rgb(var(--color-accent-primary)), rgb(var(--color-accent-secondary)))`,
-          }}
+          style={{ backgroundColor: 'rgb(var(--color-accent-primary))' }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
         />
       </div>
       {hasValues && (
-        <p className="text-[11px] text-text-muted mt-1.5">
+        <p className="text-xs text-text-primary opacity-80 mt-1.5 font-medium">
           {mainLabel}
         </p>
       )}
@@ -381,19 +337,76 @@ function GoalItem({ goal }: { goal: GoalSummary }) {
 // ---------------------------------------------------------------------------
 // Day Insight Card
 // ---------------------------------------------------------------------------
-function DayInsight() {
+// ── Time-aware helpers ──
+function getTimeSlot(): 'morning' | 'afternoon' | 'evening' {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 13) return 'morning';
+  if (h >= 13 && h < 20) return 'afternoon';
+  return 'evening';
+}
+
+function getGreeting(): string {
+  const slot = getTimeSlot();
+  if (slot === 'morning') return 'Buenos días';
+  if (slot === 'afternoon') return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+// ── Habit completion ring ──
+function HabitRing({ done, total }: { done: number; total: number }) {
+  if (total === 0) return null;
+  const r = 38;
+  const circ = 2 * Math.PI * r;
+  const pct = done / total;
+  const dash = circ * pct;
+  const allDone = done === total;
+
   return (
-    <div className="glass-card shimmer-border p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon name="sparkle" size={16} />
-        <h3 className="text-sm text-text-secondary font-medium">
-          Insight del dia
-        </h3>
+    <div className="flex flex-col items-center justify-center gap-1">
+      <div className="relative w-24 h-24">
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+          <circle cx="50" cy="50" r={r} fill="none" stroke="currentColor" className="text-text-primary/[0.06]" strokeWidth="8" />
+          <circle
+            cx="50" cy="50" r={r}
+            fill="none"
+            stroke="rgb(var(--color-accent-primary))"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${circ}`}
+            style={{ transition: 'stroke-dasharray 0.8s ease-out' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-display text-xl text-text-primary leading-none">{done}</span>
+          <span className="text-[9px] font-mono text-text-muted">/{total}</span>
+        </div>
       </div>
-      <p className="text-sm text-text-muted leading-relaxed">
-        Registra tu dia para ver insights personalizados
-      </p>
+      <span className="text-[9px] font-mono text-text-muted uppercase tracking-widest">hábitos</span>
     </div>
+  );
+}
+
+// ── Day Insight (only renders if patterns exist) ──
+function DayInsight({ patterns, onTap }: { patterns: PatternSummary[]; onTap: () => void }) {
+  if (patterns.length === 0) return null;
+  const p = patterns[0];
+  const text = p.description || `Correlación detectada entre ${p.areaA} y ${p.areaB}`;
+
+  return (
+    <button
+      onClick={onTap}
+      className="w-full text-left glass-card p-5 border-l-4 border-l-accent-mint rounded-none bg-accent-mint/[0.02] backdrop-blur-[20px] active:scale-[0.98] transition-transform"
+      style={{ WebkitTapHighlightColor: 'transparent' }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Icon name="sparkle" size={14} className="text-accent-mint" />
+          <span className="text-[10px] text-text-muted font-mono uppercase tracking-widest">Insight del día</span>
+        </div>
+        <Icon name="chevron-right" size={12} className="text-accent-mint/60" />
+      </div>
+      <p className="text-sm text-text-secondary leading-relaxed">{text}</p>
+    </button>
   );
 }
 
@@ -403,11 +416,61 @@ function DayInsight() {
 export default function DashboardPage() {
   const { data, loading, refetch } = useApi<DashboardData>(() => api.getDashboard());
   const { data: metricsData } = useApi<MetricsData>(() => api.getMetrics('week'));
+  const { data: profileData } = useApi(() => api.getProfile());
   const [showCheckin, setShowCheckin] = useState(false);
   const [checkinMode, setCheckinMode] = useState<'chat' | 'wizard'>('chat');
+  const { config, toggleHabitPin } = useDashboardConfig();
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const { data: habitsData, refetch: refetchHabits } = useApi(() => api.getHabits());
+  const navigate = useNavigate();
+
+  // Sync habit data when HabitsList mutates (create/edit/delete)
+  const refetchHabitsRef = useRef(refetchHabits);
+  refetchHabitsRef.current = refetchHabits;
+  useEffect(() => {
+    function onHabitsChanged() { refetchHabitsRef.current(); }
+    window.addEventListener('habits-changed', onHabitsChanged);
+    return () => window.removeEventListener('habits-changed', onHabitsChanged);
+  }, []);
 
   const entry = data?.entry as Record<string, number | null> | null;
   const hasEntryToday = entry && Object.values(entry).some((v) => v !== null);
+
+  // Habit completion counts
+  const allHabits = habitsData?.habits ?? [];
+  const today = habitsData?.today ?? {};
+  const completedCount = allHabits.filter(h => today[h.id]).length;
+  const totalCount = allHabits.length;
+  const timeSlot = getTimeSlot();
+  const greeting = getGreeting();
+  const quickTargetDate = useMemo(() => {
+    const base = new Date();
+    if (profileData?.defaultCheckinDayMode === 'previous_day') {
+      base.setDate(base.getDate() - 1);
+    }
+    return toISODate(base);
+  }, [profileData?.defaultCheckinDayMode]);
+  const { data: quickCheckinData, refetch: refetchQuickCheckin } = useApi(() => api.getCheckinByDate(quickTargetDate));
+  const quickEntry = quickCheckinData?.entry as Record<string, number | null> | null | undefined;
+  const hasQuickEntry = !!quickEntry && Object.values(quickEntry).some((value) => value !== null);
+  const checkinTargetLabel = profileData?.defaultCheckinDayMode === 'previous_day' ? 'ayer' : 'hoy';
+
+  // Apply dashboard config: filter hidden goals, sort by saved order
+  const configuredGoals = (() => {
+    const base = data?.goals ?? [];
+    const visible = base.filter(g => !config.hiddenGoalIds.includes(g.id));
+    if (config.goalOrder.length === 0) return visible;
+    return [...visible].sort((a, b) => {
+      const ia = config.goalOrder.indexOf(a.id);
+      const ib = config.goalOrder.indexOf(b.id);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  })();
+
+  const pinnedHabits = (habitsData?.habits ?? []).filter(h => config.pinnedHabitIds.includes(h.id));
 
   return (
     <motion.div
@@ -416,105 +479,155 @@ export default function DashboardPage() {
       initial="hidden"
       animate="show"
     >
-      {/* ---- Header ---- */}
+      {/* ── Header dinámico ── */}
       <motion.div variants={item}>
+        <p className="text-xs text-text-muted font-mono uppercase tracking-widest mb-1">{greeting}</p>
         <h1 className="text-2xl font-bold text-text-primary">Hoy</h1>
         <p className="text-sm text-text-muted mt-0.5">
           {data?.date ? formatDateFull(data.date) : '\u00A0'}
         </p>
       </motion.div>
 
-      {/* ---- Score Ring ---- */}
-      <motion.div variants={item}>
-        {loading ? <SkeletonRing /> : <ScoreRing score={data?.score ?? null} />}
+      {/* ── Score + Habit ring ── */}
+      <motion.div variants={item} className="flex items-stretch gap-4">
+        <div className="flex-1">
+          {loading ? <SkeletonRing /> : <ScoreModule score={data?.score ?? null} />}
+        </div>
+        {!loading && totalCount > 0 && (
+          <button
+            onClick={() => navigate('/goals', { state: { tab: 'habitos' } })}
+            className="flex items-center justify-center glass-card px-4 active:scale-[0.97] transition-transform"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <HabitRing done={completedCount} total={totalCount} />
+          </button>
+        )}
       </motion.div>
 
-      {/* ---- Check-in CTA ---- */}
-      {!loading && !hasEntryToday && (
+      {/* ── CTA ── */}
+      {!loading && !hasQuickEntry && (
         <motion.div variants={item}>
           <button
             onClick={() => setShowCheckin(true)}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-accent-mint/20 to-accent-violet/20 border border-accent-mint/30 text-text-primary font-semibold text-sm font-[Sora] hover:from-accent-mint/30 hover:to-accent-violet/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-5 bg-bg-card backdrop-blur-[30px] border-2 border-accent-mint/30 hover:border-accent-mint/60 font-display tracking-[0.2em] text-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 rounded-none relative overflow-hidden group shadow-sm shadow-accent-mint/5"
+            style={{ color: 'rgb(var(--color-accent-primary))' }}
           >
-            <Icon name="clipboard" size={18} />
-            Registrar mi dia
+            <Icon name="clipboard" size={24} />
+            <span>{checkinTargetLabel === 'ayer' ? 'REGISTRAR AYER' : 'REGISTRAR MI DIA'}</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-text-primary/[0.05] to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
           </button>
         </motion.div>
       )}
-      {!loading && hasEntryToday && (
+      {!loading && hasQuickEntry && (
         <motion.div variants={item}>
           <button
             onClick={() => setShowCheckin(true)}
-            className="w-full py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-text-muted text-xs font-medium hover:bg-white/[0.08] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-transparent border border-dashed border-border-primary text-text-secondary font-medium text-xs font-mono tracking-widest uppercase hover:bg-bg-card active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <Icon name="check" size={14} />
-            Editar check-in de hoy
+            {checkinTargetLabel === 'ayer' ? 'Editar check-in de ayer' : 'Editar check-in de hoy'}
           </button>
         </motion.div>
       )}
 
-      {/* ---- Quick Metrics ---- */}
-      <motion.div variants={item}>
-        {loading ? (
-          <SkeletonMetrics />
-        ) : (
-          <div className="grid grid-cols-3 gap-3">
-            <QuickMetric
-              label="Sueno"
-              value={entry?.sleepQuality ?? null}
-              icon={METRIC_ICONS.sleep}
-              suffix="/10"
-            />
-            <QuickMetric
-              label="Mood"
-              value={entry?.mood ?? null}
-              icon={METRIC_ICONS.mood}
-              suffix="/10"
-            />
-            <QuickMetric
-              label="Energia"
-              value={entry?.energyLevel ?? null}
-              icon={METRIC_ICONS.energy}
-              suffix="/10"
-            />
+      {/* ── Pending habits (morning/afternoon, not all done) ── */}
+      {!loading && totalCount > 0 && completedCount < totalCount && timeSlot !== 'evening' && (
+        <motion.div variants={item}>
+          <div className="glass-card p-4 space-y-3">
+            <p className="text-[10px] font-mono text-text-muted uppercase tracking-widest">
+              Pendientes hoy
+            </p>
+            <div className="space-y-2">
+              {allHabits
+                .filter(h => !today[h.id])
+                .slice(0, 4)
+                .map(h => (
+                  <div key={h.id} className="flex items-center gap-2.5">
+                    <div className="w-1 h-1 rounded-full bg-white/[0.2]" />
+                    <span className="text-sm text-text-secondary">{h.name}</span>
+                  </div>
+                ))}
+              {allHabits.filter(h => !today[h.id]).length > 4 && (
+                <p className="text-[10px] text-text-muted font-mono pl-3">
+                  +{allHabits.filter(h => !today[h.id]).length - 4} más
+                </p>
+              )}
+            </div>
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
 
-      {/* ---- Weekly Chart ---- */}
-      <motion.div variants={item}>
-        {!metricsData ? (
-          <SkeletonChart />
-        ) : (
-          <WeeklySummary entries={metricsData.entries} />
-        )}
-      </motion.div>
+      {/* ── Coach insight (solo si hay patterns) ── */}
+      {!loading && (data?.patterns ?? []).length > 0 && (
+        <motion.div variants={item}>
+          <DayInsight patterns={data!.patterns} onTap={() => navigate('/guide')} />
+        </motion.div>
+      )}
 
-      {/* ---- Goals ---- */}
+      {/* ── Quick metrics (solo los que tienen valor) ── */}
+      {!loading && hasEntryToday && (
+        <motion.div variants={item}>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory -mx-4 px-4">
+            {ALL_METRICS.map((m) => {
+              const raw = entry?.[m.field] ?? null;
+              const val = typeof raw === 'number' ? raw : (raw === true ? 1 : null);
+              if (val === null) return null;
+              return (
+                <div key={m.key} className="snap-start shrink-0 w-[130px]">
+                  <QuickMetric label={m.label} value={val} icon={m.icon} suffix={m.suffix} />
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Pinned habits ── */}
+      {pinnedHabits.length > 0 && (
+        <motion.div variants={item} className="space-y-3">
+          <h3 className="text-xs font-display font-bold text-text-primary tracking-[0.2em] uppercase opacity-80">
+            SEGUIMIENTO
+          </h3>
+          {pinnedHabits.map(habit => (
+            <HabitStreakWidget
+              key={habit.id}
+              habit={habit}
+              onUnpin={() => toggleHabitPin(habit.id)}
+            />
+          ))}
+        </motion.div>
+      )}
+
+      {/* ── Goals ── */}
       <motion.div variants={item}>
-        <h3 className="text-sm text-text-secondary font-medium mb-3">
-          Objetivos activos
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-display font-bold text-text-primary tracking-[0.2em] uppercase opacity-80 decoration-accent-mint/40 underline underline-offset-8">
+            Objetivos activos
+          </h3>
+          <button
+            onClick={() => setShowCustomizer(true)}
+            className="w-7 h-7 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors rounded-lg"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label="Personalizar dashboard"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </button>
+        </div>
         {loading ? (
           <SkeletonGoals />
-        ) : data?.goals && data.goals.length > 0 ? (
+        ) : configuredGoals.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {data.goals.map((g) => (
+            {configuredGoals.map((g) => (
               <GoalItem key={g.id} goal={g} />
             ))}
           </div>
         ) : (
           <div className="glass-card p-5 text-center">
-            <p className="text-sm text-text-muted">
-              No hay objetivos activos todavia
-            </p>
+            <p className="text-sm text-text-muted">No hay objetivos activos todavia</p>
           </div>
         )}
-      </motion.div>
-
-      {/* ---- Day Insight ---- */}
-      <motion.div variants={item}>
-        <DayInsight />
       </motion.div>
 
       {/* ---- Check-in Overlay (portal to body) ---- */}
@@ -532,7 +645,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3 shrink-0">
                 <div>
                   <h2 className="text-lg font-bold text-text-primary font-[Sora]">
-                    {checkinMode === 'chat' ? 'Coach SuccessOS' : 'Check-in diario'}
+                    {checkinMode === 'chat' ? 'Coach SuccessOS' : (checkinTargetLabel === 'ayer' ? 'Check-in de ayer' : 'Check-in de hoy')}
                   </h2>
                   <button
                     onClick={() => setCheckinMode(checkinMode === 'chat' ? 'wizard' : 'chat')}
@@ -554,13 +667,17 @@ export default function DashboardPage() {
                     onComplete={() => {
                       setShowCheckin(false);
                       refetch();
+                      refetchQuickCheckin();
                     }}
                   />
                 ) : (
                   <DailyCheckin
+                    targetDate={quickTargetDate}
+                    mode="quick"
                     onComplete={() => {
                       setShowCheckin(false);
                       refetch();
+                      refetchQuickCheckin();
                     }}
                   />
                 )}
@@ -570,6 +687,14 @@ export default function DashboardPage() {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* ---- Dashboard Customizer ---- */}
+      <DashboardCustomizer
+        goals={data?.goals ?? []}
+        isOpen={showCustomizer}
+        onClose={() => setShowCustomizer(false)}
+      />
     </motion.div>
   );
 }
+

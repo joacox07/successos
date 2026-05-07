@@ -4,8 +4,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Sora', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['Geist Mono', 'monospace'],
+        display: ['Sora', 'sans-serif'],
       },
       colors: {
         bg: {
@@ -25,6 +26,9 @@ export default {
         status: {
           positive: 'rgb(var(--color-positive) / <alpha-value>)',
           negative: 'rgb(var(--color-negative) / <alpha-value>)',
+        },
+        border: {
+          primary: 'rgb(var(--color-border-primary) / var(--color-border-alpha))',
         },
         text: {
           primary: 'rgb(var(--color-text-primary) / <alpha-value>)',

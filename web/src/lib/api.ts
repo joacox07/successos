@@ -367,7 +367,7 @@ export const api = {
   updateProfile: (data: { name?: string; username?: string; avatar?: AvatarConfig }) =>
     fetchApi<{ ok: boolean }>('/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
-  updateSchedule: (data: { morningCheckIn?: string; eveningCheckIn?: string }) =>
+  updateSchedule: (data: { morningCheckIn?: string; eveningCheckIn?: string; defaultCheckinDayMode?: 'today' | 'previous_day' }) =>
     fetchApi<{ ok: boolean }>('/profile/schedule', { method: 'PUT', body: JSON.stringify(data) }),
 
   // Day detail (diary)
@@ -451,6 +451,7 @@ export interface ProfileData {
   username: string | null;
   morningCheckIn: string;
   eveningCheckIn: string;
+  defaultCheckinDayMode: 'today' | 'previous_day';
   createdAt: string;
   totalEntries: number;
 }

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
-export type Theme = 'dark' | 'nothing';
 export type Density = 'normal' | 'compact';
+export type Theme = 'dark' | 'light';
 
 export interface NothingAccentColor {
   label: string;
@@ -20,45 +20,48 @@ export const NOTHING_ACCENT_COLORS: NothingAccentColor[] = [
 ];
 
 interface ThemeContextType {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
+  accentColor: string;
+  setAccentColor: (rgb: string) => void;
   density: Density;
   setDensity: (d: Density) => void;
-  nothingAccent: string;
-  setNothingAccent: (rgb: string) => void;
   isFullscreen: boolean;
   toggleFullscreen: () => void;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  glowAlpha: number;
+  setGlowAlpha: (v: number) => void;
+  customColor: string | null;
+  setCustomColor: (rgb: string | null) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
-  setTheme: () => {},
+  accentColor: '215 25 33',
+  setAccentColor: () => {},
   density: 'normal',
   setDensity: () => {},
-  nothingAccent: '215 25 33',
-  setNothingAccent: () => {},
   isFullscreen: false,
   toggleFullscreen: () => {},
+  theme: 'dark',
+  setTheme: () => {},
+  glowAlpha: 0.5,
+  setGlowAlpha: () => {},
+  customColor: null,
+  setCustomColor: () => {},
 });
 
-function applyNothingAccent(rgb: string) {
-  document.documentElement.style.setProperty('--color-nothing-accent', rgb);
-  // Only apply if currently on nothing theme
-  if (document.documentElement.getAttribute('data-theme') === 'nothing') {
-    document.documentElement.style.setProperty('--color-accent-primary', rgb);
-    document.documentElement.style.setProperty('--color-accent-tertiary', rgb);
-  }
-}
-
-function clearNothingAccentOverride() {
-  document.documentElement.style.removeProperty('--color-accent-primary');
-  document.documentElement.style.removeProperty('--color-accent-tertiary');
+function applyAccentColor(rgb: string, alpha: number) {
+  const el = document.documentElement;
+  el.style.setProperty('--color-accent-primary', rgb);
+  el.style.setProperty('--color-accent-secondary', rgb);
+  el.style.setProperty('--color-accent-tertiary', rgb);
+  el.style.setProperty('--color-accent-warm', rgb);
+  el.style.setProperty('--color-positive', rgb);
+  el.style.setProperty('--glow-alpha', String(alpha));
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem('successos-theme');
-    return (stored === 'nothing' ? 'nothing' : 'dark') as Theme;
+  const [accentColor, setAccentColorState] = useState<string>(() => {
+    return localStorage.getItem('successos-accent-color') || '215 25 33';
   });
 
   const [density, setDensityState] = useState<Density>(() => {
@@ -66,15 +69,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return stored === 'compact' ? 'compact' : 'normal';
   });
 
-  const [nothingAccent, setNothingAccentState] = useState<string>(() => {
-    return localStorage.getItem('successos-nothing-accent') || '215 25 33';
-  });
-
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  function setTheme(t: Theme) {
-    setThemeState(t);
-    localStorage.setItem('successos-theme', t);
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const stored = localStorage.getItem('successos-theme');
+    if (stored === 'light') return 'light';
+    // Migrar 'nothing' (tema viejo) a 'dark'
+    if (stored === 'nothing') {
+      localStorage.setItem('successos-theme', 'dark');
+      return 'dark';
+    }
+    return 'dark';
+  });
+
+  const [glowAlpha, setGlowAlphaState] = useState<number>(() => {
+    return parseFloat(localStorage.getItem('successos-glow-alpha') || '0.5');
+  });
+
+  const [customColor, setCustomColorState] = useState<string | null>(() => {
+    return localStorage.getItem('successos-custom-color') || null;
+  });
+
+  function setAccentColor(rgb: string) {
+    setAccentColorState(rgb);
+    localStorage.setItem('successos-accent-color', rgb);
   }
 
   function setDensity(d: Density) {
@@ -82,9 +100,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('successos-density', d);
   }
 
-  function setNothingAccent(rgb: string) {
-    setNothingAccentState(rgb);
-    localStorage.setItem('successos-nothing-accent', rgb);
+  function setTheme(t: Theme) {
+    setThemeState(t);
+    localStorage.setItem('successos-theme', t);
+  }
+
+  function setGlowAlpha(v: number) {
+    setGlowAlphaState(v);
+    localStorage.setItem('successos-glow-alpha', String(v));
+  }
+
+  function setCustomColor(rgb: string | null) {
+    setCustomColorState(rgb);
+    if (rgb === null) {
+      localStorage.removeItem('successos-custom-color');
+    } else {
+      localStorage.setItem('successos-custom-color', rgb);
+    }
   }
 
   const toggleFullscreen = useCallback(async () => {
@@ -106,15 +138,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
-  // Apply theme
+  // Apply theme & accent color
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    if (theme === 'nothing') {
-      applyNothingAccent(nothingAccent);
-    } else {
-      clearNothingAccentOverride();
-    }
-  }, [theme, nothingAccent]);
+    document.documentElement.style.filter = '';
+    const effectiveColor = customColor || accentColor;
+    applyAccentColor(effectiveColor, glowAlpha);
+  }, [theme, accentColor, customColor, glowAlpha]);
 
   // Apply density
   useEffect(() => {
@@ -125,7 +155,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const pref = localStorage.getItem('successos-fullscreen');
     if (pref === 'true' && !document.fullscreenElement) {
-      // Small delay so browser allows it after user interaction
       const handler = () => {
         document.documentElement.requestFullscreen().catch(() => {});
         document.removeEventListener('click', handler);
@@ -137,14 +166,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider
       value={{
-        theme,
-        setTheme,
+        accentColor,
+        setAccentColor,
         density,
         setDensity,
-        nothingAccent,
-        setNothingAccent,
         isFullscreen,
         toggleFullscreen,
+        theme,
+        setTheme,
+        glowAlpha,
+        setGlowAlpha,
+        customColor,
+        setCustomColor,
       }}
     >
       {children}

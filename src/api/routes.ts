@@ -1730,7 +1730,7 @@ router.get('/profile', async (req: Request, res: Response) => {
   if (!auth) return res.status(401).json({ error: 'No autorizado' });
 
   const sqlite = getSqlite();
-  const user = sqlite.prepare('SELECT id, name, username, morning_check_in, evening_check_in, created_at FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = sqlite.prepare('SELECT id, name, username, morning_check_in, evening_check_in, default_checkin_day_mode, created_at FROM users WHERE id = ?').get(auth.userId) as any;
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
   const stats = sqlite.prepare('SELECT COUNT(*) as entries FROM daily_entries WHERE user_id = ?').get(auth.userId) as any;
@@ -1745,6 +1745,7 @@ router.get('/profile', async (req: Request, res: Response) => {
     username: user.username,
     morningCheckIn: user.morning_check_in,
     eveningCheckIn: user.evening_check_in,
+    defaultCheckinDayMode: user.default_checkin_day_mode || 'today',
     createdAt: user.created_at,
     totalEntries: stats?.entries || 0,
   });
@@ -1819,13 +1820,20 @@ router.put('/profile/schedule', async (req: Request, res: Response) => {
   const auth = verifyJwt(req.headers.authorization?.replace('Bearer ', '') || '');
   if (!auth) return res.status(401).json({ error: 'No autorizado' });
 
-  const { morningCheckIn, eveningCheckIn } = req.body;
+  const { morningCheckIn, eveningCheckIn, defaultCheckinDayMode } = req.body;
   const sqlite = getSqlite();
 
   const fields: string[] = [];
   const values: any[] = [];
   if (morningCheckIn) { fields.push('morning_check_in = ?'); values.push(morningCheckIn); }
   if (eveningCheckIn) { fields.push('evening_check_in = ?'); values.push(eveningCheckIn); }
+  if (defaultCheckinDayMode) {
+    if (defaultCheckinDayMode !== 'today' && defaultCheckinDayMode !== 'previous_day') {
+      return res.status(400).json({ error: 'Modo de check-in inválido' });
+    }
+    fields.push('default_checkin_day_mode = ?');
+    values.push(defaultCheckinDayMode);
+  }
 
   if (fields.length > 0) {
     values.push(auth.userId);

@@ -21,6 +21,7 @@ function ensureTables(db: InstanceType<typeof Database>) {
       onboarding_step INTEGER DEFAULT 0,
       morning_check_in TEXT DEFAULT '07:00',
       evening_check_in TEXT DEFAULT '22:00',
+      default_checkin_day_mode TEXT DEFAULT 'today',
       password_hash TEXT,
       password_salt TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -353,6 +354,7 @@ function ensureTables(db: InstanceType<typeof Database>) {
     "ALTER TABLE users ADD COLUMN email TEXT",
     "ALTER TABLE users ADD COLUMN profile_complete INTEGER DEFAULT 0",
     "ALTER TABLE users ADD COLUMN username TEXT",
+    "ALTER TABLE users ADD COLUMN default_checkin_day_mode TEXT DEFAULT 'today'",
     "ALTER TABLE habits ADD COLUMN is_negative INTEGER DEFAULT 0",
     "ALTER TABLE habits ADD COLUMN target_minutes INTEGER",
     "ALTER TABLE habit_logs ADD COLUMN status TEXT DEFAULT 'positive'",
@@ -370,6 +372,7 @@ function ensureTables(db: InstanceType<typeof Database>) {
 
   const postMigrations = [
     "CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users(username)",
+    "UPDATE users SET default_checkin_day_mode = 'today' WHERE default_checkin_day_mode IS NULL OR trim(default_checkin_day_mode) = ''",
     "UPDATE habit_logs SET status = CASE WHEN completed = 1 THEN 'positive' ELSE 'clear' END WHERE status IS NULL",
     "UPDATE habit_logs SET minutes_logged = 0 WHERE minutes_logged IS NULL",
     "UPDATE competition_habits SET kind = 'event' WHERE kind IS NULL OR trim(kind) = ''",

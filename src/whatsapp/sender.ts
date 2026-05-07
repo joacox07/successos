@@ -4,6 +4,14 @@ import { logger } from '../utils/logger.js';
 
 const lastSendTimes = new Map<string, number>();
 
+// Prevent memory leak: clean up entries older than 1 hour every 30 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  for (const [jid, time] of lastSendTimes) {
+    if (time < cutoff) lastSendTimes.delete(jid);
+  }
+}, 30 * 60 * 1000).unref();
+
 async function rateLimitedSend(sock: WASocket, jid: string, content: Parameters<WASocket['sendMessage']>[1]) {
   const now = Date.now();
   const lastSend = lastSendTimes.get(jid) || 0;

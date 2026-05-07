@@ -19,7 +19,9 @@ export function LoginPage() {
     try {
       const res = await api.login(username.trim(), password);
       setToken(res.token);
-      navigate('/', { replace: true });
+      if (res.isAdmin) navigate('/admin', { replace: true });
+      else if (!res.profileComplete) navigate('/setup', { replace: true });
+      else navigate('/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {
@@ -51,10 +53,10 @@ export function LoginPage() {
               <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </motion.div>
-          <h1 className="text-2xl font-bold text-text-primary">
-            Success<span className="text-accent-mint">OS</span>
+          <h1 className="text-3xl font-display font-bold text-text-primary tracking-tighter uppercase">
+            SUCCESS<span className="text-accent-mint">OS</span>
           </h1>
-          <p className="text-text-muted text-sm mt-1">Tu coach personal de vida</p>
+          <p className="text-text-muted text-[10px] font-mono mt-1 uppercase tracking-[0.3em]">NEURAL_COACH_V2.0</p>
         </div>
 
         {/* Card */}

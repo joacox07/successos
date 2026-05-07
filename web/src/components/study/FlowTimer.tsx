@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
+import { playTone, unlockAudio, notify, requestNotificationPermission } from '../../lib/audio';
+
+// ─── Sound ───────────────────────────────────────────────────────────────────
+
+const SOUND_MILESTONE = () => playTone([{ freq: 880, duration: 0.5 }]);
+
+const SOUND_COMPLETE = () => playTone([
+  { freq: 440, duration: 0.3 },
+  { freq: 550, duration: 0.3, delay: 0.25 },
+  { freq: 660, duration: 0.3, delay: 0.5 },
+  { freq: 880, duration: 0.6, delay: 0.75 },
+]);
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -33,6 +45,19 @@ export default function FlowTimer({ onSessionComplete }: Props) {
   const startTimeRef = useRef(0);
   const elapsedBeforePauseRef = useRef(0);
   const rafRef = useRef<number>(0);
+  const reachedMilestonesRef = useRef(new Set<number>());
+
+  // ── visibilitychange: sync elapsed when returning from background ─────────
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.hidden || !running) return;
+      const total = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current) / 1000;
+      setElapsed(total);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [running]);
 
   // ── Tick loop using Date.now() delta ──────────────────────────────────────
 
@@ -44,6 +69,22 @@ export default function FlowTimer({ onSessionComplete }: Props) {
       const delta = (now - startTimeRef.current) / 1000;
       const total = elapsedBeforePauseRef.current + delta;
       setElapsed(total);
+
+      // Check milestones
+      for (const m of MILESTONES) {
+        const thresholdSecs = m.minutes * 60;
+        if (total >= thresholdSecs && !reachedMilestonesRef.current.has(m.minutes)) {
+          reachedMilestonesRef.current.add(m.minutes);
+          if (m.minutes === TARGET_MINUTES) {
+            SOUND_COMPLETE();
+            notify('¡90 minutos de flow!', 'Increíble. Tomá un descanso.');
+          } else {
+            SOUND_MILESTONE();
+            notify(`¡${m.minutes} minutos de flow!`, 'Seguí así.');
+          }
+        }
+      }
+
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -56,11 +97,14 @@ export default function FlowTimer({ onSessionComplete }: Props) {
   // ── Controls ──────────────────────────────────────────────────────────────
 
   function handleStart() {
+    unlockAudio();
+    requestNotificationPermission();
     if (finished) {
       // Reset for new session
       setFinished(false);
       setElapsed(0);
       elapsedBeforePauseRef.current = 0;
+      reachedMilestonesRef.current = new Set();
     }
     startTimeRef.current = Date.now();
     setRunning(true);
@@ -145,7 +189,7 @@ export default function FlowTimer({ onSessionComplete }: Props) {
           <span className="font-mono text-5xl font-bold text-text-primary tracking-tight">
             {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
           </span>
-          <span className="text-xs font-semibold tracking-widest mt-2 text-accent-mint drop-shadow-[0_0_12px_rgba(74,222,128,0.5)]">
+          <span className="text-[10px] font-display font-bold tracking-[0.2em] mt-2 text-accent-mint drop-shadow-[0_0_12px_rgba(74,222,128,0.3)] uppercase">
             MODO FLOW
           </span>
         </div>
@@ -159,7 +203,7 @@ export default function FlowTimer({ onSessionComplete }: Props) {
             <span
               key={m.minutes}
               className={cn(
-                'text-xs font-mono font-medium transition-colors',
+                'text-[10px] font-mono font-bold tracking-widest transition-colors',
                 reached ? 'text-accent-mint' : 'text-text-muted/40',
               )}
             >

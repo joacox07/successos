@@ -1,0 +1,10 @@
+[Unit]
+Description=Run SuccessOS backup daily
+
+[Timer]
+OnCalendar=*-*-* 06:15:00 UTC
+Persistent=true
+Unit=successos-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -159,13 +159,13 @@ export default function SpacedRepetition() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-text-primary tracking-wide">
-            Repaso Espaciado
+          <h3 className="text-xs font-display font-bold text-text-primary tracking-[0.2em] uppercase opacity-80 decoration-accent-violet underline underline-offset-8">
+            REPASO_ESPACIADO
           </h3>
-          <p className="text-xs text-text-muted mt-0.5">
+          <p className="text-[9px] text-text-muted font-mono mt-3 uppercase tracking-widest">
             {subjects.length === 0
               ? 'Sin materias'
-              : `${subjects.length} materia${subjects.length !== 1 ? 's' : ''}${dueCount > 0 ? ` · ${dueCount} para hoy` : ''}`}
+              : `${subjects.length} materias ${dueCount > 0 ? ` · ${dueCount} hoy` : ''}`}
           </p>
         </div>
         <button
@@ -293,7 +293,7 @@ export default function SpacedRepetition() {
                       </span>
                       <span
                         className={cn(
-                          'text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0',
+                          'text-[9px] font-display font-bold px-2 py-0.5 rounded-full border flex-shrink-0 uppercase tracking-[0.15em]',
                           statusBadgeBg(status),
                           statusColor(status),
                         )}

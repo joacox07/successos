@@ -71,17 +71,19 @@ function SkeletonCalendar() {
 
 export default function HabitCalendar({ habit, onBack }: HabitCalendarProps) {
   const [month, setMonth] = useState(getCurrentMonth);
-  const { data, loading } = useApi<HabitCalendarData>(
+  const { data, loading, error, refetch } = useApi<HabitCalendarData>(
     () => api.getHabitCalendar(habit.id, month),
-    [habit.id, month]
+    [habit.id, month],
   );
+  const showSkeleton = loading && !data;
 
   const todayStr = useMemo(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   }, []);
 
-  const completedSet = useMemo(() => new Set(data?.dates ?? []), [data]);
+  const successSet = useMemo(() => new Set(data?.successDates ?? data?.dates ?? []), [data]);
+  const failureSet = useMemo(() => new Set(data?.failureDates ?? []), [data]);
   const cells = useMemo(() => getCalendarDays(month), [month]);
 
   function isToday(dateStr: string) {
@@ -147,7 +149,14 @@ export default function HabitCalendar({ habit, onBack }: HabitCalendarProps) {
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
         >
-          {loading ? (
+          {error && !data ? (
+            <div className="rounded-2xl border border-accent-coral/20 bg-accent-coral/5 p-5 text-center space-y-3">
+              <p className="text-accent-coral text-sm">{error}</p>
+              <button onClick={refetch} className="text-xs text-text-muted hover:text-text-primary transition-colors">
+                Reintentar
+              </button>
+            </div>
+          ) : showSkeleton ? (
             <SkeletonCalendar />
           ) : (
             <div className="space-y-4">
@@ -164,13 +173,14 @@ export default function HabitCalendar({ habit, onBack }: HabitCalendarProps) {
               </div>
 
               {/* Day cells */}
-              <div className="grid grid-cols-7 gap-1.5">
+              <div className="grid grid-cols-7 gap-1">
                 {cells.map((cell, i) => {
                   if (!cell) {
-                    return <div key={`empty-${i}`} className="w-9 h-9" />;
+                    return <div key={`empty-${i}`} className="aspect-square" />;
                   }
 
-                  const completed = completedSet.has(cell.date);
+                  const success = successSet.has(cell.date);
+                  const failure = failureSet.has(cell.date);
                   const future = isFuture(cell.date);
                   const today = isToday(cell.date);
 
@@ -178,14 +188,22 @@ export default function HabitCalendar({ habit, onBack }: HabitCalendarProps) {
                     <div
                       key={cell.date}
                       className={cn(
-                        'w-9 h-9 rounded-lg flex items-center justify-center text-xs font-mono transition-all',
-                        completed && 'bg-accent-mint/70 text-bg-primary font-semibold shadow-[0_0_8px_rgba(74,222,128,0.3)]',
-                        !completed && !future && 'bg-white/[0.04] text-text-secondary',
-                        future && 'bg-white/[0.02] text-text-muted/40',
-                        today && 'ring-2 ring-accent-mint/40'
+                        'aspect-square rounded-md flex items-center justify-center transition-all border',
+                        success && 'bg-accent-mint/85 border-accent-mint/60',
+                        failure && 'bg-accent-coral/85 border-accent-coral/60',
+                        !success && !failure && !future && 'bg-white/[0.02] border-white/[0.1]',
+                        future && 'bg-white/[0.01] border-white/[0.02] opacity-25',
+                        today && !success && !failure && 'border-accent-mint/40',
+                        today && success && 'border-accent-mint',
+                        today && failure && 'border-accent-coral'
                       )}
+                      style={success ? {
+                        boxShadow: 'inset 0 0 8px rgba(var(--color-accent-primary) / 0.3)',
+                      } : failure ? {
+                        boxShadow: 'inset 0 0 8px rgba(248,113,113,0.28)',
+                      } : undefined}
                     >
-                      {cell.day}
+                      <span className={cn('text-[8px]', success || failure ? 'text-white/90 font-medium' : 'text-white/25')}>{cell.day}</span>
                     </div>
                   );
                 })}
@@ -205,6 +223,11 @@ export default function HabitCalendar({ habit, onBack }: HabitCalendarProps) {
                       Racha: {data.streak} dias
                     </span>
                   </div>
+                  {habit.isNegative ? (
+                    <p className="text-xs text-text-muted">
+                      Verde = día limpio. Coral = recaída registrada.
+                    </p>
+                  ) : null}
                 </div>
               )}
             </div>

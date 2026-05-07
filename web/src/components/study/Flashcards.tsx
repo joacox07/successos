@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { api, type FlashcardDeck, type Flashcard } from '../../lib/api';
+import Icon from '../Icon';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -258,7 +259,7 @@ export default function Flashcards({ onSessionComplete }: Props) {
         >
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-text-primary">Mis Mazos</h2>
+            <h2 className="text-sm font-display font-bold text-text-primary tracking-widest uppercase opacity-80 decoration-accent-mint underline underline-offset-8">Mis Mazos</h2>
             <button
               onClick={() => setShowNewDeck(!showNewDeck)}
               className={cn(
@@ -285,14 +286,9 @@ export default function Flashcards({ onSessionComplete }: Props) {
               >
                 <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] p-4 space-y-3">
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Emoji"
-                      value={newDeckEmoji}
-                      onChange={(e) => setNewDeckEmoji(e.target.value)}
-                      maxLength={2}
-                      className="w-14 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2 py-2 text-center text-lg outline-none focus:border-accent-mint/40 text-text-primary"
-                    />
+                    <div className="w-14 h-10 bg-white/[0.06] border border-white/[0.08] rounded-xl flex items-center justify-center text-text-muted">
+                      <Icon name="book" size={20} />
+                    </div>
                     <input
                       type="text"
                       placeholder="Nombre del mazo"
@@ -322,7 +318,9 @@ export default function Flashcards({ onSessionComplete }: Props) {
           {/* Empty state */}
           {!loading && decks.length === 0 && (
             <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.06] p-8 text-center">
-              <p className="text-3xl mb-2">🃏</p>
+              <div className="flex justify-center mb-4">
+                <Icon name="target" size={32} className="text-text-muted" />
+              </div>
               <p className="text-sm text-text-muted">
                 No hay mazos todavia. Crea uno para empezar.
               </p>
@@ -342,10 +340,12 @@ export default function Flashcards({ onSessionComplete }: Props) {
                 onClick={() => handleOpenDeck(deck)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
               >
-                <span className="text-xl">{deck.emoji || '📚'}</span>
+                <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center shrink-0">
+                  <Icon name="book" size={20} className="text-accent-mint" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-text-primary truncate">{deck.name}</p>
-                  <p className="text-xs text-text-muted font-mono">{deck.cardCount} cartas</p>
+                  <p className="text-sm font-display font-medium text-text-primary truncate">{deck.name}</p>
+                  <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider">{deck.cardCount} cartas</p>
                 </div>
                 <svg className="w-4 h-4 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -374,9 +374,11 @@ export default function Flashcards({ onSessionComplete }: Props) {
         >
           {/* Deck header */}
           <div className="text-center">
-            <span className="text-3xl">{selectedDeck.emoji || '📚'}</span>
-            <h2 className="text-lg font-semibold text-text-primary mt-1">{selectedDeck.name}</h2>
-            <p className="text-xs text-text-muted font-mono mt-0.5">
+            <div className="flex justify-center mb-4">
+              <Icon name="book" size={48} className="text-accent-mint" />
+            </div>
+            <h2 className="text-xl font-display font-bold text-text-primary mt-1 uppercase tracking-tight">{selectedDeck.name}</h2>
+            <p className="text-[10px] text-text-muted font-mono mt-1.5 uppercase tracking-widest">
               {cards.length} cartas &middot; {reviewCards.length} para repasar
             </p>
           </div>

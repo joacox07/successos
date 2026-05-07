@@ -10,6 +10,7 @@ export const users = sqliteTable('users', {
   onboardingStep: integer('onboarding_step').default(0),
   morningCheckIn: text('morning_check_in').default('07:00'),
   eveningCheckIn: text('evening_check_in').default('22:00'),
+  defaultCheckinDayMode: text('default_checkin_day_mode').default('today'),
   passwordHash: text('password_hash'),
   passwordSalt: text('password_salt'),
   email: text('email'),

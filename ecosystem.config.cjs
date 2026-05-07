@@ -2,9 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'successos',
-      script: 'npx',
-      args: 'tsx src/index.ts',
+      script: 'node_modules/.bin/tsx',
+      args: 'src/index.ts',
       cwd: __dirname,
+      exec_mode: 'fork',
       instances: 1,
       autorestart: true,
       watch: false,

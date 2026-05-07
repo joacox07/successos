@@ -805,6 +805,7 @@ export default function DiaryPage() {
               </div>
               <div className="min-h-0 flex-1 overflow-hidden">
                 <DailyCheckin
+                  mode="edit"
                   targetDate={dateStr}
                   initialData={data?.entry ?? null}
                   initialHabits={(data?.habits ?? []).map((habit) => ({

@@ -16,11 +16,8 @@ export function formatDateFull(dateStr: string): string {
 }
 
 export function categoryEmoji(category: string): string {
-  const map: Record<string, string> = {
-    negocio: '💼', salud: '💪', personal: '🧠',
-    finanzas: '💰', relaciones: '❤️', educacion: '📚',
-  };
-  return map[category] || '🎯';
+  // We're replacing emojis with icons globally
+  return categoryIcon(category);
 }
 
 export function categoryColor(category: string): string {
@@ -33,6 +30,37 @@ export function categoryColor(category: string): string {
     educacion: 'text-accent-violet',
   };
   return map[category] || 'text-accent-mint';
+}
+
+export function getIconForHabit(name: string, category: string | null): string {
+  const nameLower = name.toLowerCase();
+  const iconMap: Record<string, string> = {
+    gym: 'dumbbell', ejercicio: 'dumbbell', entrenamiento: 'dumbbell',
+    running: 'exercise', correr: 'exercise',
+    meditar: 'moon', meditación: 'moon', meditacion: 'moon',
+    leer: 'book', lectura: 'book',
+    agua: 'droplet', hidratación: 'droplet', hidratacion: 'droplet',
+    journaling: 'notebook', diario: 'notebook',
+    yoga: 'yoga',
+    música: 'target', musica: 'target',
+    code: 'target', programar: 'target',
+    trabajo: 'briefcase',
+    estudio: 'book',
+    dormir: 'moon', sueño: 'moon', sueno: 'moon',
+    socializar: 'user', redes: 'target', social: 'user',
+    familia: 'heart',
+    compras: 'target', cocinar: 'target', cocina: 'target',
+    limpieza: 'target', caminar: 'target', caminata: 'target',
+    rezar: 'pray', oración: 'pray', oracion: 'pray', rosario: 'pray',
+  };
+  for (const [key, icon] of Object.entries(iconMap)) {
+    if (nameLower.includes(key)) return icon;
+  }
+  const categoryMap: Record<string, string> = {
+    salud: 'heart', educacion: 'book', espiritual: 'pray',
+    personal: 'user', productividad: 'target',
+  };
+  return categoryMap[category || ''] || 'check';
 }
 
 export function categoryIcon(category: string): string {

@@ -1,12 +1,12 @@
 import cron from 'node-cron';
 import { logger } from '../utils/logger.js';
+import { getTodayDate, getCurrentHHMM, isWithinWindow, isSunday, isFirstOfMonth } from '../utils/dates.js';
 import { getSock } from '../whatsapp/connection.js';
 import { sendText, sendTextChunked } from '../whatsapp/sender.js';
 import {
   getAllOnboardedUsers,
   getActiveGoals,
   getTodayEntry,
-  getActivePatterns,
   logMessage,
   hasCheckinBeenSent,
   markCheckinSent,
@@ -16,32 +16,8 @@ import {
   buildCheckInEveningPrompt,
 } from '../ai/prompts.js';
 import { generateCoachResponse } from '../ai/coach.js';
-import { generateWeeklyReport } from '../engine/reports.js';
-import { generateMonthlyReview } from '../engine/reports.js';
+import { generateWeeklyReport, generateMonthlyReview } from '../engine/reports.js';
 import { analyzeCorrelations } from '../engine/analytics.js';
-
-function getTodayDate(timezone: string): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: timezone });
-}
-
-function getCurrentHHMM(timezone: string): string {
-  return new Date().toLocaleTimeString('en-GB', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
-
-function isFirstOfMonth(timezone: string): boolean {
-  const day = new Date().toLocaleDateString('en-CA', { timeZone: timezone }).split('-')[2];
-  return day === '01';
-}
-
-function isSunday(timezone: string): boolean {
-  const dow = new Date().toLocaleDateString('en-US', { timeZone: timezone, weekday: 'short' });
-  return dow === 'Sun';
-}
 
 async function sendCheckinToUser(
   userId: number,
@@ -51,7 +27,6 @@ async function sendCheckinToUser(
   message: string,
 ) {
   try {
-    // Check if already sent today
     const alreadySent = await hasCheckinBeenSent(userId, checkinType, date);
     if (alreadySent) {
       logger.debug({ userId, checkinType, date }, 'Check-in already sent, skipping');
@@ -67,14 +42,12 @@ async function sendCheckinToUser(
       rawContent: message,
     });
 
-    // Mark as sent to prevent duplicates
     await markCheckinSent(userId, checkinType, date);
   } catch (err) {
     logger.error({ err, userId, phone, checkinType }, 'Failed to send check-in');
   }
 }
 
-// Runs every 15 minutes — checks which users need a check-in
 async function checkInLoop() {
   let users;
   try {
@@ -99,20 +72,24 @@ async function checkInLoop() {
         await sendCheckinToUser(user.id, user.phone, 'morning', date, message);
       }
 
-      // Smart midday prompt (14:00) — ask about goal progress if nothing reported
+      // Smart midday prompt (14:00)
       if (isWithinWindow(now, '14:00')) {
         const entry = await getTodayEntry(user.id, date);
         const goals = await getActiveGoals(user.id);
         if (!entry || !entry.goalProgress) {
-          const topGoal = goals.sort((a, b) => (a.priority ?? 3) - (b.priority ?? 3))[0];
-          if (topGoal) {
-            const message = `¿Cómo va el día? ¿Pudiste avanzar algo con "${topGoal.title}"?`;
+          const sorted = [...goals].sort((a, b) => (a.priority ?? 3) - (b.priority ?? 3));
+          const topPriority = sorted[0]?.priority ?? 3;
+          const topGoals = sorted.filter((g) => (g.priority ?? 3) === topPriority);
+          const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+          const todayGoal = topGoals[dayOfYear % topGoals.length];
+          if (todayGoal) {
+            const message = `¿Cómo va el día? ¿Pudiste avanzar algo con "${todayGoal.title}"?`;
             await sendCheckinToUser(user.id, user.phone, 'midday', date, message);
           }
         }
       }
 
-      // Smart afternoon prompt (18:00) — ask about missing support areas
+      // Smart afternoon prompt (18:00)
       if (isWithinWindow(now, '18:00')) {
         const entry = await getTodayEntry(user.id, date);
         if (entry) {
@@ -140,7 +117,6 @@ async function checkInLoop() {
           unit: g.unit,
         }));
 
-        // Generate AI-powered evening summary
         try {
           const response = await generateCoachResponse(
             'Resumen del día',
@@ -149,7 +125,8 @@ async function checkInLoop() {
             [],
           );
           await sendCheckinToUser(user.id, user.phone, 'evening', date, response);
-        } catch {
+        } catch (err) {
+          logger.warn({ err, userId: user.id }, 'Evening AI coach failed, using fallback');
           const fallback = buildCheckInEveningPrompt(user.name || '', goalsForPrompt, entry as Record<string, unknown> | null);
           await sendCheckinToUser(user.id, user.phone, 'evening', date, fallback);
         }
@@ -195,21 +172,28 @@ async function checkInLoop() {
   }
 }
 
-// Check if current time is within a 15-minute window of the target time
-function isWithinWindow(current: string, target: string): boolean {
-  const [ch, cm] = current.split(':').map(Number);
-  const [th, tm] = target.split(':').map(Number);
-  const currentMin = ch * 60 + cm;
-  const targetMin = th * 60 + tm;
-  return currentMin >= targetMin && currentMin < targetMin + 15;
-}
-
 export function startScheduler() {
-  // Run every 15 minutes
   cron.schedule('*/15 * * * *', () => {
     logger.info('Running scheduled check-in loop');
     checkInLoop().catch((err) => logger.error({ err }, 'Check-in loop failed'));
   });
 
-  logger.info('Scheduler started (every 15 min)');
+  cron.schedule('0 3 * * *', async () => {
+    logger.info('Running daily analytics for all users...');
+    try {
+      const users = await getAllOnboardedUsers();
+      for (const user of users) {
+        try {
+          await analyzeCorrelations(user.id);
+          logger.info({ userId: user.id }, 'Daily analytics complete');
+        } catch (err) {
+          logger.error({ err, userId: user.id }, 'Daily analytics failed for user');
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, 'Daily analytics loop failed');
+    }
+  });
+
+  logger.info('Scheduler started (check-ins every 15 min, analytics daily at 3am)');
 }

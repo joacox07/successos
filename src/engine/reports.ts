@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { withRetry } from '../utils/retry.js';
 import { WEEKLY_REPORT_PROMPT, MONTHLY_REVIEW_PROMPT } from '../ai/prompts.js';
+import { getDateRange } from '../utils/dates.js';
 import {
   getDailyEntries,
   getActiveGoals,
@@ -11,19 +12,6 @@ import {
   createReport,
   getLatestReport,
 } from '../db/repository.js';
-
-function getDateRange(type: 'weekly' | 'monthly', timezone = 'America/Argentina/Buenos_Aires'): { start: string; end: string } {
-  const end = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
-  const [y, m, d] = end.split('-').map(Number);
-  const startDate = new Date(y, m - 1, d);
-  if (type === 'weekly') {
-    startDate.setDate(startDate.getDate() - 7);
-  } else {
-    startDate.setMonth(startDate.getMonth() - 1);
-  }
-  const start = startDate.toLocaleDateString('en-CA');
-  return { start, end };
-}
 
 export async function generateWeeklyReport(userId: number): Promise<string> {
   const { start, end } = getDateRange('weekly');
@@ -126,6 +114,10 @@ export async function generateMonthlyReview(userId: number): Promise<string> {
     getGoalLogsByUser(userId, start, end),
     getActivePatterns(userId),
   ]);
+
+  if (entries.length === 0) {
+    return 'No tengo suficientes datos de este mes para hacer la revisión. ¡Mandame más updates!';
+  }
 
   const goalSummaries = goals.map((g) => {
     const logs = goalLogs.filter((l) => l.goalId === g.id);

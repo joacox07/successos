@@ -93,25 +93,32 @@ export default function StudyPage() {
     <div className="px-4 pt-6 pb-28 max-w-lg mx-auto">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="mb-6"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="mb-12"
       >
-        <h1 className="text-2xl font-bold text-text-primary">Estudio</h1>
+        <h1 className="text-3xl sm:text-5xl font-display text-text-primary tracking-tighter uppercase leading-none">
+          COGNITIVE_HUB
+        </h1>
+        <div className="flex items-center gap-3 mt-4">
+          <div className="h-0.5 w-16 bg-accent-mint" />
+          <p className="text-[10px] font-mono text-text-muted uppercase tracking-[0.4em]">NEURAL PERFORMANCE TRACKER</p>
+        </div>
         {todayMinutes > 0 && (
-          <p className="text-sm text-text-muted mt-1">
-            <span className="font-mono text-accent-mint">{todayMinutes} min</span> de foco hoy
-          </p>
+          <div className="mt-6 border-l border-accent-mint pl-4">
+            <p className="text-[10px] font-mono text-text-muted uppercase tracking-widest">SESSION_LOG</p>
+            <p className="text-2xl font-display text-white mt-1 uppercase">
+              {todayMinutes} MIN <span className="text-xs opacity-40">COMMITTED_TODAY</span>
+            </p>
+          </div>
         )}
       </motion.div>
 
-      {/* Method selector — horizontal scroll */}
+      {/* Method selector — sharp grid */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.05 }}
-        className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none -mx-4 px-4"
+        className="grid grid-cols-3 sm:grid-cols-5 gap-px bg-white/[0.05] border border-white/[0.05] mb-12"
       >
         {METHODS.map((m) => {
           const active = method === m.key;
@@ -120,15 +127,17 @@ export default function StudyPage() {
               key={m.key}
               onClick={() => setMethod(m.key)}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all shrink-0',
-                'bg-white/[0.04] backdrop-blur-xl border',
+                'flex flex-col items-center justify-center gap-2 py-4 transition-all duration-300 relative group overflow-hidden',
                 active
-                  ? cn(m.activeBorder, 'text-text-primary shadow-lg')
-                  : 'border-white/[0.06] text-text-muted hover:text-text-secondary',
+                  ? 'bg-accent-mint text-bg-primary shadow-[0_0_15px_rgba(var(--color-accent-primary),0.3)]'
+                  : 'bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-card-hover',
               )}
             >
               <Icon name={m.icon} size={16} />
-              <span>{m.label}</span>
+              <span className="text-[8px] font-mono font-bold tracking-widest uppercase">{m.label}</span>
+              {active && (
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-text-primary/40" />
+              )}
             </button>
           );
         })}

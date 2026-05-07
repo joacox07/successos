@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/hooks/useApi';
 import { api, type GoalsData, type Habit } from '@/lib/api';
@@ -57,7 +58,7 @@ function StatusBadge({ status, onClick }: { status: string | null; onClick?: () 
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       className={cn(
-        'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all',
+        'px-2.5 py-0.5 rounded-full text-[9px] font-display font-bold uppercase tracking-[0.1em] transition-all',
         s.bg, s.text,
         onClick && 'hover:brightness-125 cursor-pointer'
       )}
@@ -67,22 +68,15 @@ function StatusBadge({ status, onClick }: { status: string | null; onClick?: () 
   );
 }
 
-function ProgressBar({ progress, category }: { progress: number; category: string }) {
-  const colorMap: Record<string, { from: string; to: string }> = {
-    negocio: { from: 'from-accent-amber', to: 'to-accent-amber/50' },
-    salud: { from: 'from-accent-mint', to: 'to-accent-mint/50' },
-    personal: { from: 'from-accent-violet', to: 'to-accent-violet/50' },
-    finanzas: { from: 'from-accent-amber', to: 'to-accent-amber/50' },
-    relaciones: { from: 'from-accent-coral', to: 'to-accent-coral/50' },
-    educacion: { from: 'from-accent-violet', to: 'to-accent-violet/50' },
-  };
-  const c = colorMap[category] ?? { from: 'from-accent-mint', to: 'to-accent-mint/50' };
+function ProgressBar({ progress }: { progress: number }) {
+  const c = { from: 'from-accent-mint', to: 'to-accent-mint/50' };
   const clamped = Math.min(Math.max(progress, 0), 100);
 
   return (
-    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+    <div className="w-full h-2 rounded-full bg-text-primary/[0.08] overflow-hidden">
       <motion.div
-        className={cn('h-full rounded-full bg-gradient-to-r', c.from, c.to)}
+        className="h-full rounded-full"
+        style={{ backgroundColor: 'rgb(var(--color-accent-primary))' }}
         initial={{ width: 0 }}
         animate={{ width: `${clamped}%` }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -197,6 +191,8 @@ function GoalFormModal({ goal, onClose, onSaved }: {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function set<K extends keyof GoalFormData>(key: K, value: GoalFormData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -413,6 +409,57 @@ function GoalFormModal({ goal, onClose, onSaved }: {
           >
             {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear objetivo'}
           </button>
+
+          {/* Delete section — only when editing */}
+          {isEdit && (
+            <>
+              <div className="border-t border-white/[0.06]" />
+              {!confirmDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="w-full py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-accent-coral/70 hover:text-accent-coral hover:bg-accent-coral/10 transition-all"
+                >
+                  <Icon name="trash" size={15} />
+                  Eliminar objetivo
+                </button>
+              ) : (
+                <div className="rounded-xl border border-accent-coral/20 bg-accent-coral/5 p-3.5 space-y-3">
+                  <p className="text-xs text-accent-coral text-center">
+                    ¿Seguro? Esta accion no se puede deshacer.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={deleting}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-white/[0.06] text-text-secondary hover:bg-white/[0.08] transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={async () => {
+                        setDeleting(true);
+                        try {
+                          await api.deleteGoal(goal.id);
+                          onSaved();
+                          onClose();
+                        } catch {
+                          setDeleting(false);
+                          setConfirmDelete(false);
+                        }
+                      }}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-accent-coral/20 text-accent-coral hover:bg-accent-coral/30 transition-colors disabled:opacity-50"
+                    >
+                      {deleting ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </form>
       </motion.div>
     </motion.div>
@@ -503,8 +550,8 @@ function GoalsContent() {
 
   return (
     <>
-      {/* Loading */}
-      {loading && (
+      {/* Loading (only first load) */}
+      {loading && !data && (
         <div className="space-y-4">
           {[0, 1, 2].map((i) => (
             <SkeletonCard key={i} />
@@ -513,9 +560,12 @@ function GoalsContent() {
       )}
 
       {/* Error */}
-      {error && (
-        <div className="rounded-2xl border border-accent-coral/20 bg-accent-coral/5 p-5 text-center">
+      {error && !data && (
+        <div className="rounded-2xl border border-accent-coral/20 bg-accent-coral/5 p-5 text-center space-y-3">
           <p className="text-accent-coral text-sm">{error}</p>
+          <button onClick={refetch} className="text-xs text-text-muted hover:text-text-primary transition-colors">
+            Reintentar
+          </button>
         </div>
       )}
 
@@ -538,10 +588,10 @@ function GoalsContent() {
               {/* Top row */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn(
-                    'w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center text-lg shrink-0',
-                    categoryColor(goal.category)
-                  )}>
+                  <div
+                    className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center text-lg shrink-0"
+                    style={{ color: 'rgb(var(--color-accent-primary))' }}
+                  >
                     <Icon name={categoryIcon(goal.category)} size={18} />
                   </div>
                   <div className="min-w-0">
@@ -576,14 +626,14 @@ function GoalsContent() {
               </div>
 
               {/* Progress bar */}
-              <ProgressBar progress={goal.progress} category={goal.category} />
+              <ProgressBar progress={goal.progress} />
 
               {/* Bottom row */}
               <div className="flex items-center justify-between text-xs">
-                <span className={cn('font-mono font-medium', categoryColor(goal.category))}>
+                <span className="font-mono font-medium text-text-primary opacity-80">
                   {goal.currentValue ?? '0'} / {goal.targetValue ?? '?'}{' '}
                   {goal.unit && (
-                    <span className="text-text-muted font-sans">{goal.unit}</span>
+                    <span className="text-text-muted font-sans font-normal">{goal.unit}</span>
                   )}
                 </span>
 
@@ -601,8 +651,7 @@ function GoalsContent() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setDeletingGoal(goal); }}
-                    className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-muted hover:text-accent-coral hover:bg-accent-coral/10 transition-all opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                    style={{ opacity: undefined }}
+                    className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-text-muted hover:text-accent-coral hover:bg-accent-coral/10 transition-all sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Icon name="trash" size={13} />
                   </button>
@@ -699,32 +748,34 @@ function GoalsContent() {
 }
 
 export default function GoalsPage() {
-  const [tab, setTab] = useState<Tab>('objetivos');
+  const location = useLocation();
+  const initialTab = (location.state as { tab?: Tab } | null)?.tab ?? 'habitos';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   return (
     <div className="px-4 pt-6 pb-28 max-w-lg mx-auto">
       {/* Header */}
       <motion.h1
-        className="text-2xl font-bold text-text-primary mb-4"
+        className="text-2xl font-display font-bold text-text-primary mb-4 tracking-tight uppercase"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {tab === 'habitos' && selectedHabit ? 'Habito' : 'Progreso'}
+        {tab === 'habitos' && selectedHabit ? 'HABITO' : 'PROGRESO'}
       </motion.h1>
 
       {/* Tab toggle - hidden when viewing calendar */}
       {!(tab === 'habitos' && selectedHabit) && (
         <motion.div
-          className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-6"
+          className="flex gap-1 p-1 border border-dashed border-white/[0.1] bg-white/[0.02] backdrop-blur-md mb-8"
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.05 }}
         >
           {([
-            { key: 'objetivos' as Tab, label: 'Objetivos' },
-            { key: 'habitos' as Tab, label: 'Habitos' },
+            { key: 'habitos' as Tab, label: 'HABITOS' },
+            { key: 'objetivos' as Tab, label: 'OBJETIVOS' },
           ]).map(({ key, label }) => (
             <button
               key={key}
@@ -733,13 +784,21 @@ export default function GoalsPage() {
                 setSelectedHabit(null);
               }}
               className={cn(
-                'flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200',
+                'flex-1 py-2.5 px-4 text-[10px] font-display font-bold uppercase tracking-[0.2em] transition-all duration-300 relative overflow-hidden group',
                 tab === key
-                  ? 'bg-accent-mint/20 text-accent-mint'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'text-accent-mint'
+                  : 'text-text-muted hover:text-text-primary'
               )}
             >
               {label}
+              {tab === key && (
+                <motion.div
+                  layoutId="activeTabGoals"
+                  className="absolute inset-0 bg-accent-mint/10 border border-accent-mint/20"
+                  initial={false}
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
             </button>
           ))}
         </motion.div>
@@ -789,3 +848,4 @@ export default function GoalsPage() {
     </div>
   );
 }
+

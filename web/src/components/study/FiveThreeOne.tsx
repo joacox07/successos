@@ -2,6 +2,21 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import Icon from '../Icon';
+import { playTone, unlockAudio, notify, requestNotificationPermission } from '../../lib/audio';
+
+// ─── Sound ───────────────────────────────────────────────────────────────────
+
+const SOUND_PHASE_DONE = () => playTone([
+  { freq: 660, duration: 0.25 },
+  { freq: 880, duration: 0.4, delay: 0.2 },
+]);
+
+const SOUND_ALL_DONE = () => playTone([
+  { freq: 440, duration: 0.25 },
+  { freq: 550, duration: 0.25, delay: 0.2 },
+  { freq: 660, duration: 0.25, delay: 0.4 },
+  { freq: 880, duration: 0.5, delay: 0.6 },
+]);
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +105,18 @@ export default function FiveThreeOne({ onSessionComplete }: Props) {
     return () => cancelAnimationFrame(rafRef.current);
   }, [running]);
 
+  // ── visibilitychange: sync elapsed when returning from background ─────────
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.hidden || !running) return;
+      const total = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current) / 1000;
+      setElapsed(total);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [running]);
+
   // ── Phase complete check ──────────────────────────────────────────────────
 
   const advancePhase = useCallback(() => {
@@ -100,7 +127,8 @@ export default function FiveThreeOne({ onSessionComplete }: Props) {
     setCompletedPhases(newCompleted);
 
     if (currentPhaseIdx < PHASES.length - 1) {
-      // Move to next phase after a brief pause
+      SOUND_PHASE_DONE();
+      notify(`¡${PHASES[currentPhaseIdx].label} terminada!`, `Siguiente: ${PHASES[currentPhaseIdx + 1].label}`);
       setElapsed(0);
       elapsedBeforePauseRef.current = 0;
       setTimeout(() => {
@@ -109,7 +137,8 @@ export default function FiveThreeOne({ onSessionComplete }: Props) {
         setRunning(true);
       }, 600);
     } else {
-      // All done
+      SOUND_ALL_DONE();
+      notify('¡Ciclo 5-3-1 completo!', '9 minutos de estudio intensivo.');
       setAllDone(true);
       onSessionComplete?.({ focusMinutes: 9 });
     }
@@ -125,6 +154,8 @@ export default function FiveThreeOne({ onSessionComplete }: Props) {
   // ── Controls ──────────────────────────────────────────────────────────────
 
   function handleStartPause() {
+    unlockAudio();
+    requestNotificationPermission();
     if (allDone) {
       // Reset everything
       setAllDone(false);
@@ -215,17 +246,17 @@ export default function FiveThreeOne({ onSessionComplete }: Props) {
               >
                 {/* Phase header */}
                 <div className="flex items-center gap-3 px-4 py-3">
-                  <Icon name={p.icon} size={20} />
+                  <Icon name={p.icon} size={18} />
                   <span
                     className={cn(
-                      'text-sm font-semibold tracking-wider',
-                      isCompleted ? 'line-through opacity-60' : '',
+                      'text-[10px] font-display font-bold tracking-widest',
+                      isCompleted ? 'line-through opacity-40' : '',
                       p.accentClass,
                     )}
                   >
                     {p.label}
                   </span>
-                  <span className="ml-auto text-xs text-text-muted font-mono">
+                  <span className="ml-auto text-[10px] text-text-muted font-mono opacity-60">
                     {Math.floor(p.durationSeconds / 60)}:00
                   </span>
                   {isCompleted && (
@@ -272,7 +303,7 @@ export default function FiveThreeOne({ onSessionComplete }: Props) {
                         <span className="font-mono text-3xl font-bold text-text-primary">
                           {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
                         </span>
-                        <span className={cn('text-[10px] font-semibold tracking-widest mt-1', p.accentClass, p.glowClass)}>
+                        <span className={cn('text-[9px] font-display font-bold tracking-[0.2em] mt-1 uppercase', p.accentClass, p.glowClass)}>
                           {p.label}
                         </span>
                       </div>
