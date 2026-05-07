@@ -497,6 +497,27 @@ export default function CompetitionsPage() {
     }
   }
 
+  async function handleSyncAllHabitsToProfile() {
+    if (!selectedCompetitionId || !competitionDetail) return;
+    setBusyKey('sync-all-habits');
+    setErrorMessage(null);
+    try {
+      for (const habit of competitionDetail.habits) {
+        if (habit.linkedPersonalHabitId) continue;
+        if (habit.syncState === 'suggested_match' && habit.suggestedPersonalHabitId) {
+          await api.applySuggestedCompetitionHabitLink(selectedCompetitionId, habit.id);
+        } else {
+          await api.createAndLinkCompetitionHabit(selectedCompetitionId, habit.id);
+        }
+      }
+      setRefreshToken((current) => current + 1);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudieron pasar todos los hábitos al tracker personal.');
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   async function handleApplySuggestedLink(habitId: number) {
     if (!selectedCompetitionId) return;
     setBusyKey(`suggested-link-${habitId}`);
@@ -647,7 +668,7 @@ export default function CompetitionsPage() {
                 [habit.id]: event.target.value ? Number(event.target.value) : '',
               }))
             }
-            className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none"
+            className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-text-primary outline-none [&>option]:bg-white [&>option]:text-slate-900"
           >
             <option value="">Usar solo en competencia</option>
             {personalHabits.map((personalHabit) => (
@@ -696,6 +717,35 @@ export default function CompetitionsPage() {
           <KpiCard label="Éxitos" value={`${competitionStats.summary.positiveCount}`} helper="Cantidad total de éxitos registrados." tone="mint" />
           <KpiCard label="Recaídas" value={`${competitionStats.summary.negativeCount}`} helper="Cantidad total de recaídas registradas." tone="coral" />
         </div>
+
+        <Card className="bg-white/[0.02]">
+          <SectionTitle title="Como se calculan tus puntos" subtitle={`Rango actual: ${range === 'week' ? 'semana' : range === 'month' ? 'mes' : 'total'}. Los habitos vinculados se leen desde tu tracker personal.`} />
+          <div className="mt-4 grid gap-2">
+            {competitionStats.habits.map((habit) => (
+              <div key={habit.habitId} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">{habit.name}</p>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {habit.kind === 'duration'
+                        ? `${habit.minutesPerBlock ?? 30} min = ${habit.pointsPerBlock ?? 1} pt - ${habit.totalMinutes} min cargados`
+                        : habit.scoringMode === 'negative_only'
+                          ? `Evitacion: limpio por defecto, recaida -${habit.pointsNegative} pts`
+                          : habit.scoringMode === 'both'
+                            ? `Exito ${habit.pointsPositive} pts - recaida -${habit.pointsNegative} pts`
+                            : `Exito ${habit.pointsPositive} pts`}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs font-mono">
+                    <p className="text-accent-mint">{habit.positiveCount} exitos</p>
+                    <p className="text-accent-coral">{habit.negativeCount} recaidas</p>
+                    <p className="text-text-primary">{formatSigned(habit.netPoints)} pts</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         <Card>
           <SectionTitle title="Evolución" subtitle="Puntos acumulados por participante." />
@@ -1178,6 +1228,18 @@ export default function CompetitionsPage() {
 
                 <Card className="space-y-5">
                   <SectionTitle title="Editar hábitos compartidos" subtitle="Definí reglas de puntos y elegí qué hábitos querés unificar con tu tracker personal." />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={handleSyncAllHabitsToProfile}
+                      disabled={busyKey === 'sync-all-habits' || !competitionDetail.habits.some((habit) => !habit.linkedPersonalHabitId)}
+                      className="rounded-2xl bg-accent-mint/15 px-4 py-3 text-sm font-semibold text-accent-mint disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {busyKey === 'sync-all-habits' ? 'Sincronizando...' : 'Pasar todos al tracker personal'}
+                    </button>
+                    <p className="text-xs text-text-secondary">
+                      Vincula sugeridos y crea los que faltan sin tocar los ya vinculados.
+                    </p>
+                  </div>
                   <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                     <div className="space-y-4">
                       {competitionDetail.habits.map((habit) => (

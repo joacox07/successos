@@ -174,8 +174,18 @@ export const api = {
     fetchApi<{ ok: boolean }>(`/habits/${id}`, { method: 'DELETE' }),
 
   toggleHabit: (id: number, date?: string) =>
-    fetchApi<{ ok: boolean; completed: boolean }>(`/habits/${id}/toggle`, {
+    fetchApi<{ ok: boolean; completed: boolean; habits?: HabitsData }>(`/habits/${id}/toggle`, {
       method: 'POST', body: JSON.stringify({ date }),
+    }),
+
+  setHabitStatus: (id: number, status: 'positive' | 'negative' | 'clear', date?: string) =>
+    fetchApi<{ ok: boolean; status: string; marked: boolean; habits?: HabitsData }>(`/habits/${id}/status`, {
+      method: 'POST', body: JSON.stringify({ status, date }),
+    }),
+
+  setHabitMinutes: (id: number, minutes: number, date?: string, mode: 'add' | 'set' = 'set') =>
+    fetchApi<{ ok: boolean; minutesLogged: number; targetMinutes: number | null; completed: boolean; status: string; habits?: HabitsData }>(`/habits/${id}/minutes`, {
+      method: 'POST', body: JSON.stringify({ minutes, date, mode }),
     }),
 
   getHabitCalendar: (id: number, month: string) =>
@@ -548,6 +558,7 @@ export interface Habit {
 export interface HabitsData {
   habits: Habit[];
   today: Record<number, boolean>;
+  status?: Record<number, 'positive' | 'negative' | 'clear'>;
   minutes?: Record<number, number>;
 }
 
@@ -906,6 +917,7 @@ export interface ChatResponse {
   response: string;
   extractedData: Record<string, any> | null;
   currentEntry: Record<string, any> | null;
+  entryDate?: string;
   streak: number;
   transcription?: string;
 }
@@ -962,6 +974,8 @@ export interface DayEntriesData {
     emoji: string | null;
     category?: string | null;
     isNegative?: boolean;
+    targetMinutes?: number | null;
+    minutesLogged?: number;
     status?: 'positive' | 'negative' | 'clear';
     completed: boolean;
   }>;
@@ -972,11 +986,17 @@ export interface DayEntriesData {
     name: string;
     description: string | null;
     category: string | null;
+    kind: CompetitionHabitKind;
     scoringMode: CompetitionScoringMode;
     pointsPositive: number;
     pointsNegative: number;
+    minutesPerBlock: number | null;
+    pointsPerBlock: number | null;
+    dailyTargetMinutes: number | null;
     linkedPersonalHabitId: number | null;
     status: CompetitionLogStatus;
+    minutesLogged: number;
+    pointsAwarded: number;
   }>;
   goals: GoalSummary[];
   studySessions: StudySession[];

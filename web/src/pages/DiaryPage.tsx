@@ -322,12 +322,15 @@ function CompetitionHabitsSection({
   editable = false,
   busyKey = null,
   onLog,
+  onLogDuration,
 }: {
   habits: DayEntriesData['competitionHabits'];
   editable?: boolean;
   busyKey?: string | null;
   onLog?: (competitionId: number, habitId: number, status: 'positive' | 'negative' | 'clear') => void;
+  onLogDuration?: (competitionId: number, habitId: number, minutes: number) => void;
 }) {
+  const [minutesDraft, setMinutesDraft] = useState<Record<string, string>>({});
   if (!habits.length) return null;
   return (
     <CollapsibleSection title="Competencias" count={String(habits.length)} icon="trophy" iconColor="text-accent-mint">
@@ -784,10 +787,10 @@ export default function DiaryPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-bg-primary"
+            className="fixed inset-0 z-50 overflow-y-auto bg-bg-primary"
           >
-            <div className="mx-auto flex h-full w-full max-w-lg flex-col px-4 pb-4 pt-4">
-              <div className="mb-3 flex items-center justify-between">
+            <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+              <div className="sticky top-0 z-20 mb-3 flex items-center justify-between border-b border-white/[0.06] bg-bg-primary/95 pb-3 backdrop-blur-xl">
                 <div>
                   <h2 className="text-lg font-bold text-text-primary">Editar {formatDateFull(dateStr)}</h2>
                   <p className="mt-1 text-xs text-text-muted">Guardá el check-in completo de ese día.</p>
@@ -800,7 +803,7 @@ export default function DiaryPage() {
                   <Icon name="x" size={16} />
                 </button>
               </div>
-              <div className="min-h-0 flex-1">
+              <div className="min-h-0 flex-1 overflow-hidden">
                 <DailyCheckin
                   targetDate={dateStr}
                   initialData={data?.entry ?? null}
@@ -809,6 +812,10 @@ export default function DiaryPage() {
                     name: habit.name,
                     emoji: habit.emoji,
                     category: habit.category ?? null,
+                    isNegative: !!habit.isNegative,
+                    targetMinutes: habit.targetMinutes ?? null,
+                    minutesLogged: habit.minutesLogged ?? 0,
+                    status: habit.status ?? 'clear',
                     completed: !!habit.completed,
                   }))}
                   onComplete={() => {

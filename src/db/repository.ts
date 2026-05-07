@@ -348,6 +348,7 @@ export async function addHabitLogMinutes(
   userId: number,
   date: string,
   minutesDelta: number,
+  mode: 'add' | 'set' = 'add',
 ) {
   const db = getDb();
   const [habit] = await db.select({
@@ -369,7 +370,7 @@ export async function addHabitLogMinutes(
     .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.userId, userId), eq(habitLogs.date, date)))
     .limit(1);
 
-  const nextMinutes = Math.max(0, (existing?.minutesLogged ?? 0) + safeDelta);
+  const nextMinutes = Math.max(0, mode === 'set' ? safeDelta : (existing?.minutesLogged ?? 0) + safeDelta);
   const status = nextMinutes > 0 ? 'positive' : 'clear';
   const completed = nextMinutes > 0;
 
@@ -446,9 +447,12 @@ export async function getHabitsToday(userId: number, date: string) {
     today: Object.fromEntries(
       userHabits.map((habit) => {
         const status = statusByHabitId.get(habit.id);
-        const isMarked = habit.isNegative ? status === 'negative' : status === 'positive';
+        const isMarked = habit.isNegative ? status !== 'negative' : status === 'positive';
         return [habit.id, isMarked];
       }),
+    ),
+    status: Object.fromEntries(
+      userHabits.map((habit) => [habit.id, statusByHabitId.get(habit.id) || 'clear']),
     ),
     minutes: Object.fromEntries(
       userHabits.map((habit) => [habit.id, minutesByHabitId.get(habit.id) || 0]),

@@ -271,6 +271,16 @@ function pointsForEvent(mode: CompetitionScoringMode, positive: number, negative
   return -Math.abs(negative);
 }
 
+function isAvoidanceScoring(mode: CompetitionScoringMode) {
+  return mode === 'negative_only' || mode === 'both';
+}
+
+function effectiveEventStatus(habit: Pick<CompetitionHabitRow, 'kind' | 'scoringMode'>, status: CompetitionLogStatus): CompetitionLogStatus {
+  if (habit.kind !== 'event') return status;
+  if (status === 'clear' && isAvoidanceScoring(habit.scoringMode)) return 'positive';
+  return status;
+}
+
 function normalizeCompetitionKind(value?: string | null): CompetitionHabitKind {
   return value === 'duration' ? 'duration' : 'event';
 }
@@ -820,7 +830,7 @@ function getTodayProgressForHabit(competitionHabit: CompetitionHabitRow, partici
       `SELECT status, completed, minutes_logged as minutesLogged
        FROM habit_logs WHERE habit_id = ? AND user_id = ? AND date = ? LIMIT 1`
     ).get(link.personalHabitId, participantUserId, date) as { status?: string | null; completed?: number | null; minutesLogged?: number | null } | undefined;
-    const status = statusFromPersonalRow(row);
+    const status = effectiveEventStatus(competitionHabit, statusFromPersonalRow(row));
     const minutesLogged = Math.max(0, row?.minutesLogged ?? 0);
     return {
       status,
@@ -836,7 +846,7 @@ function getTodayProgressForHabit(competitionHabit: CompetitionHabitRow, partici
   ).get(competitionHabit.id, participantUserId, date) as
     | { status?: string; minutesLogged?: number | null; pointsAwarded?: number | null }
     | undefined;
-  const status = (row?.status as CompetitionLogStatus | undefined) ?? 'clear';
+  const status = effectiveEventStatus(competitionHabit, (row?.status as CompetitionLogStatus | undefined) ?? 'clear');
   const minutesLogged = Math.max(0, row?.minutesLogged ?? 0);
   return {
     status,
@@ -1053,6 +1063,13 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
   const dailyTimelineIndex = new Map(dates.map((date, index) => [date, index]));
 
   const participantCumulativeByDate = new Map<number, Map<string, number>>();
+  const readLog = (habit: CompetitionHabitRow, userId: number, date: string): CompetitionLogRow => {
+    const raw = logMap.get(`${habit.id}:${userId}:${date}`) ?? { date, status: 'clear' as CompetitionLogStatus, minutesLogged: 0 };
+    return {
+      ...raw,
+      status: habit.kind === 'duration' ? raw.status : effectiveEventStatus(habit, raw.status),
+    };
+  };
 
   for (const participant of participants) {
     let totalPoints = 0;
@@ -1079,7 +1096,7 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
       let habitMinutes = 0;
 
       for (const date of dates) {
-        const log = logMap.get(`${habit.id}:${participant.userId}:${date}`) ?? { date, status: 'clear' as CompetitionLogStatus, minutesLogged: 0 };
+        const log = readLog(habit, participant.userId, date);
         const status = log.status;
         const points = habit.kind === 'duration'
           ? pointsForDuration(log.minutesLogged, habit.minutesPerBlock, habit.pointsPerBlock)
@@ -1111,7 +1128,7 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
       }
 
       for (let index = dates.length - 1; index >= 0; index -= 1) {
-        const log = logMap.get(`${habit.id}:${participant.userId}:${dates[index]}`) ?? { date: dates[index], status: 'clear' as CompetitionLogStatus, minutesLogged: 0 };
+        const log = readLog(habit, participant.userId, dates[index]);
         const success = habit.kind === 'duration'
           ? (habit.dailyTargetMinutes ? log.minutesLogged >= habit.dailyTargetMinutes : log.minutesLogged > 0)
           : log.status === 'positive';
@@ -1134,7 +1151,7 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
         negativeDays: habitNegative,
         completionRate: Math.round(((habit.kind === 'duration'
           ? dates.filter((date) => {
-              const log = logMap.get(`${habit.id}:${participant.userId}:${date}`);
+              const log = readLog(habit, participant.userId, date);
               return habit.dailyTargetMinutes
                 ? (log?.minutesLogged ?? 0) >= habit.dailyTargetMinutes
                 : (log?.minutesLogged ?? 0) > 0;
@@ -1246,7 +1263,7 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
       let successfulDays = 0;
 
       for (const date of dates) {
-        const log = logMap.get(`${habit.id}:${participant.userId}:${date}`) ?? { date, status: 'clear' as CompetitionLogStatus, minutesLogged: 0 };
+        const log = readLog(habit, participant.userId, date);
         const status = log.status;
         const pointsDelta = habit.kind === 'duration'
           ? pointsForDuration(log.minutesLogged, habit.minutesPerBlock, habit.pointsPerBlock)
@@ -1285,7 +1302,7 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
       }
 
       for (let index = dates.length - 1; index >= 0; index -= 1) {
-        const log = logMap.get(`${habit.id}:${participant.userId}:${dates[index]}`) ?? { date: dates[index], status: 'clear' as CompetitionLogStatus, minutesLogged: 0 };
+        const log = readLog(habit, participant.userId, dates[index]);
         const success = habit.kind === 'duration'
           ? (habit.dailyTargetMinutes ? log.minutesLogged >= habit.dailyTargetMinutes : log.minutesLogged > 0)
           : log.status === 'positive';
@@ -1552,13 +1569,14 @@ function addPersonalHabitMinutes(habitId: number, userId: number, date: string, 
   return { minutesLogged: totalMinutes };
 }
 
-function addCompetitionHabitMinutes(competitionHabitId: number, userId: number, date: string, minutesDelta: number) {
+function addCompetitionHabitMinutes(competitionHabitId: number, userId: number, date: string, minutesDelta: number, mode: 'add' | 'set' = 'add') {
   const sqlite = sqliteOrThrow();
   const existing = sqlite.prepare(
     `SELECT id, minutes_logged as minutesLogged FROM competition_habit_logs
      WHERE competition_habit_id = ? AND user_id = ? AND date = ? LIMIT 1`
   ).get(competitionHabitId, userId, date) as { id: number; minutesLogged?: number | null } | undefined;
-  const totalMinutes = Math.max(0, (existing?.minutesLogged ?? 0) + Math.max(0, Math.round(minutesDelta)));
+  const safeMinutes = Math.max(0, Math.round(minutesDelta));
+  const totalMinutes = Math.max(0, mode === 'set' ? safeMinutes : (existing?.minutesLogged ?? 0) + safeMinutes);
 
   if (totalMinutes === 0) {
     if (existing) sqlite.prepare(`DELETE FROM competition_habit_logs WHERE id = ?`).run(existing.id);
@@ -1583,6 +1601,7 @@ export function syncCompetitionDurationFromPersonal(input: {
   userId: number;
   date: string;
   minutesDelta: number;
+  mode?: 'add' | 'set';
 }) {
   const sqlite = sqliteOrThrow();
   const links = sqlite.prepare(
@@ -1593,7 +1612,7 @@ export function syncCompetitionDurationFromPersonal(input: {
   ).all(input.personalHabitId, input.userId) as Array<{ competitionHabitId: number; minutesPerBlock: number | null; pointsPerBlock: number | null }>;
 
   return links.map((link) => {
-    const result = addCompetitionHabitMinutes(link.competitionHabitId, input.userId, input.date, input.minutesDelta);
+    const result = addCompetitionHabitMinutes(link.competitionHabitId, input.userId, input.date, input.minutesDelta, input.mode ?? 'add');
     const pointsAwarded = pointsForDuration(result.minutesLogged, link.minutesPerBlock, link.pointsPerBlock);
     sqlite.prepare(
       `UPDATE competition_habit_logs

@@ -15,6 +15,7 @@ import {
   getActivePatterns,
   logMessage,
   getRecentMessagesAsc,
+  getUserHabits,
 } from '../db/repository.js';
 import { transcribeAudio } from '../ai/transcriber.js';
 import { extractData } from '../ai/extractor.js';
@@ -22,7 +23,9 @@ import { generateCoachResponse } from '../ai/coach.js';
 import { trackExtraction } from '../engine/tracker.js';
 import { handleOnboardingMessage } from '../engine/onboarding.js';
 import { processRecalibration } from '../engine/recalibration.js';
+import { handleCalendarMessage } from '../calendar/handler.js';
 import { STATUS_PROMPT } from '../ai/prompts.js';
+import { getTodayDate } from '../utils/dates.js';
 
 const RECALIBRATION_KEYWORDS = [
   'cambiar objetivo', 'cambiar meta', 'ajustar objetivo', 'ajustar meta',
@@ -32,13 +35,9 @@ const RECALIBRATION_KEYWORDS = [
 ];
 
 // Quick log patterns — short messages that just log data
-const QUICK_LOG_PATTERN = /^[\w\sáéíóúñü.,]+\d+\s*(hs?|hrs?|min|km|pag|pages?|\$|usd|ars|kg|lts?|cal|rep|reps|sets?)/i;
+const QUICK_LOG_PATTERN = /^[\w\sáéíóúñü.,]*?\d+\s*(hs?|hrs?|min|km|pag|pages?|\$|usd|ars|kg|lts?|cal|rep|reps|sets?)\s*$/i;
 const STATUS_KEYWORDS = ['como vengo', 'cómo vengo', 'status', 'resumen', 'estado', 'como voy', 'cómo voy', 'progreso'];
 const HELP_KEYWORDS = ['ayuda', 'help', 'comandos', 'qué puedo hacer', 'que puedo hacer'];
-
-function getTodayDate(timezone: string): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: timezone });
-}
 
 function isQuickLog(text: string): boolean {
   return text.length <= config.quickLogMaxLength && QUICK_LOG_PATTERN.test(text.trim());
@@ -68,6 +67,12 @@ Podés escribirme lo que sea naturalmente (texto o audio) y yo extraigo los dato
 • *"cambiar objetivo"* — Modificar tus metas
 • *"nuevo objetivo"* — Agregar una meta nueva
 
+📅 *Calendario:*
+• *"agendame reunión mañana a las 3pm"* — Crear evento
+• *"qué tengo hoy"* o *"mi agenda"* — Ver eventos
+• *"borrá la reunión del martes"* — Eliminar evento
+• *"conectar calendario"* — Vincular Google Calendar
+
 También podés mandar logs rápidos:
 • "gym 1hr" • "dormí 6hs" • "leí 30 pag"
 
@@ -83,22 +88,27 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
   // Extract text content
   let text: string | null = null;
   let audioBuffer: Buffer | null = null;
-  const incomingContentType = contentType === 'audioMessage' ? 'audio' : 'text';
+  let audioMimeType: string | undefined;
+  const isAudio = contentType === 'audioMessage';
+  const incomingContentType = isAudio ? 'audio' : 'text';
 
   if (contentType === 'conversation') {
     text = msg.message!.conversation || null;
   } else if (contentType === 'extendedTextMessage') {
     text = msg.message!.extendedTextMessage?.text || null;
-  } else if (contentType === 'audioMessage') {
+  } else if (isAudio) {
     try {
-      audioBuffer = await downloadMediaMessage(
+      audioMimeType = msg.message!.audioMessage?.mimetype || undefined;
+      const stream = await downloadMediaMessage(
         msg,
         'buffer',
         {},
         { logger: console as any, reuploadRequest: sock.updateMediaMessage },
-      ) as Buffer;
+      );
+      audioBuffer = Buffer.isBuffer(stream) ? stream : Buffer.from(stream as Uint8Array);
+      logger.info({ jid, bufferLen: audioBuffer.length, audioMimeType }, 'Audio downloaded');
     } catch (err) {
-      logger.error({ err }, 'Failed to download audio');
+      logger.error({ err, contentType }, 'Failed to download audio');
       await sendText(sock, jid, 'No pude escuchar el audio, ¿me lo mandás de nuevo o escribime?');
       return;
     }
@@ -114,7 +124,7 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
   // Transcribe audio to text
   if (audioBuffer) {
     try {
-      text = await transcribeAudio(audioBuffer);
+      text = await transcribeAudio(audioBuffer, audioMimeType);
       logger.info({ userId: user.id, textLen: text.length }, 'Audio transcribed');
     } catch (err) {
       logger.error({ err }, 'Transcription failed');
@@ -124,6 +134,19 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
   }
 
   if (!text) return;
+
+  // ── Calendar connect (works even during onboarding) ──
+  const textLowerEarly = text.toLowerCase();
+  const CALENDAR_CONNECT_EARLY = ['conectar calendario', 'vincular calendario', 'google calendar'];
+  if (CALENDAR_CONNECT_EARLY.some((kw) => textLowerEarly.includes(kw)) && config.googleClientId) {
+    const { getAuthUrl } = await import('../calendar/gcal.js');
+    const authUrl = getAuthUrl(user.id);
+    const response = `Para conectar tu Google Calendar, abrí este link:\n${authUrl}`;
+    await sendText(sock, jid, response);
+    await logMessage({ userId: user.id, direction: 'in', contentType: incomingContentType, rawContent: text });
+    await logMessage({ userId: user.id, direction: 'out', contentType: 'text', rawContent: response });
+    return;
+  }
 
   // Log incoming message
   const inMsg = await logMessage({
@@ -178,6 +201,18 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
     }
   }
 
+  // ── Calendar check (before extraction — calendar messages are handled separately) ──
+  try {
+    const calResponse = await handleCalendarMessage(user.id, text, sock, jid);
+    if (calResponse) {
+      await sendText(sock, jid, calResponse);
+      await logMessage({ userId: user.id, direction: 'out', contentType: 'text', rawContent: calResponse });
+      return;
+    }
+  } catch (err) {
+    logger.error({ err }, 'Calendar handler error');
+  }
+
   // ── Context setup ──
   const timezone = user.timezone || 'America/Argentina/Buenos_Aires';
   const date = getTodayDate(timezone);
@@ -191,6 +226,15 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
     category: g.category,
     metric: g.metric,
     unit: g.unit,
+  }));
+
+  // Fetch existing habits for context
+  const existingHabits = await getUserHabits(user.id);
+  const habitsForExtraction = existingHabits.map((h) => ({
+    id: h.id,
+    name: h.name,
+    category: h.category,
+    isNegative: !!h.isNegative,
   }));
 
   // ── Status request ──
@@ -227,7 +271,7 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
   if (isQuickLog(text)) {
     let extraction;
     try {
-      extraction = await extractData(text, goalsForExtraction, todayEntry as Record<string, unknown> | null);
+      extraction = await extractData(text, goalsForExtraction, todayEntry as Record<string, unknown> | null, habitsForExtraction);
     } catch (err) {
       logger.error({ err }, 'Quick log extraction failed');
       await sendText(sock, jid, 'No entendí eso. ¿Me lo decís de otra forma?');
@@ -257,7 +301,7 @@ export async function handleMessage(sock: WASocket, msg: WAMessage) {
   // 1. Extract structured data
   let extraction;
   try {
-    extraction = await extractData(text, goalsForExtraction, todayEntry as Record<string, unknown> | null);
+    extraction = await extractData(text, goalsForExtraction, todayEntry as Record<string, unknown> | null, habitsForExtraction);
   } catch (err) {
     logger.error({ err }, 'Extraction failed');
     await sendText(sock, jid, 'Te escuché, lo anoto');

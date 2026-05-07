@@ -56,6 +56,8 @@ import {
   getHabitByIdForUser,
   updateHabit,
   deactivateHabit,
+  setHabitLogStatus,
+  addHabitLogMinutes,
   toggleHabitLog,
   getHabitLogs,
   getHabitsToday,
@@ -1329,7 +1331,7 @@ router.get('/checkin/today', async (req: Request, res: Response) => {
 
 router.get('/checkin/:date', async (req: Request, res: Response) => {
   const { userId } = (req as any).user;
-  const { date } = req.params;
+  const date = String(req.params.date);
   res.json(await buildCheckinState(userId, date));
 });
 
@@ -1374,7 +1376,8 @@ router.post('/checkin', async (req: Request, res: Response) => {
   }
 
   const entry = await upsertDailyEntry(userId, date, data);
-  res.json({ ok: true, entry });
+  const habitsState = await getHabitsToday(userId, date);
+  res.json({ ok: true, entry, habits: habitsState });
 });
 
 // ── Habits ──
@@ -1438,10 +1441,65 @@ router.post('/habits/:id/toggle', async (req: Request, res: Response) => {
     const date = (req.body.date as string) || getTodayDate(tz);
     assertEditableDate(date, tz);
     const completed = await toggleHabitLog(habitId, userId, date);
-    res.json({ ok: true, completed });
+    const habitsState = await getHabitsToday(userId, date);
+    res.json({ ok: true, completed, habits: habitsState });
   } catch (err) {
     logger.error({ err }, 'Error toggling habit');
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error al marcar hábito' });
+  }
+});
+
+router.post('/habits/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { userId } = (req as any).user;
+    const habitId = Number(req.params.id);
+    const { status, date } = req.body as { status?: 'positive' | 'negative' | 'clear'; date?: string };
+    if (!status || !['positive', 'negative', 'clear'].includes(status)) {
+      return res.status(400).json({ error: 'Status invalido' });
+    }
+    const tz = 'America/Argentina/Buenos_Aires';
+    const targetDate = date || getTodayDate(tz);
+    assertEditableDate(targetDate, tz);
+    const result = await setHabitLogStatus(habitId, userId, targetDate, status);
+    const habitsState = await getHabitsToday(userId, targetDate);
+    res.json({ ok: true, ...result, habits: habitsState });
+  } catch (err) {
+    logger.error({ err }, 'Error setting habit status');
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Error al marcar habito' });
+  }
+});
+
+router.post('/habits/:id/minutes', async (req: Request, res: Response) => {
+  try {
+    const { userId } = (req as any).user;
+    const habitId = Number(req.params.id);
+    const { minutes, minutesDelta, date, mode } = req.body as {
+      minutes?: number;
+      minutesDelta?: number;
+      date?: string;
+      mode?: 'add' | 'set';
+    };
+    const rawMinutes = mode === 'set' ? minutes : (minutesDelta ?? minutes);
+    if (!Number.isFinite(Number(rawMinutes)) || Number(rawMinutes) < 0) {
+      return res.status(400).json({ error: 'Minutos invalidos' });
+    }
+    const tz = 'America/Argentina/Buenos_Aires';
+    const targetDate = date || getTodayDate(tz);
+    assertEditableDate(targetDate, tz);
+    const result = await addHabitLogMinutes(habitId, userId, targetDate, Number(rawMinutes), mode === 'set' ? 'set' : 'add');
+    const { syncCompetitionDurationFromPersonal } = await import('../db/competition.js');
+    syncCompetitionDurationFromPersonal({
+      personalHabitId: habitId,
+      userId,
+      date: targetDate,
+      minutesDelta: Number(rawMinutes),
+      mode: mode === 'set' ? 'set' : 'add',
+    });
+    const habitsState = await getHabitsToday(userId, targetDate);
+    res.json({ ok: true, ...result, habits: habitsState });
+  } catch (err) {
+    logger.error({ err }, 'Error setting habit minutes');
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Error al registrar minutos' });
   }
 });
 
@@ -1788,7 +1846,7 @@ router.get('/day/:date', async (req: Request, res: Response) => {
     const auth = verifyJwt(req.headers.authorization?.replace('Bearer ', '') || '');
     if (!auth) return res.status(401).json({ error: 'No autorizado' });
 
-    const { date } = req.params; // YYYY-MM-DD
+    const date = String(req.params.date); // YYYY-MM-DD
     const sqlite = getSqlite();
     if (!sqlite) return res.status(500).json({ error: 'DB not ready' });
 
@@ -1818,6 +1876,7 @@ router.get('/day/:date', async (req: Request, res: Response) => {
     try {
       habitsWithStatus = sqlite.prepare(`
         SELECT h.id AS habit_id, h.name, h.emoji, h.frequency, h.category, COALESCE(h.is_negative, 0) AS is_negative,
+               h.target_minutes AS target_minutes, COALESCE(hl.minutes_logged, 0) AS minutes_logged,
                COALESCE(hl.completed, 0) AS completed, COALESCE(hl.status, CASE WHEN hl.completed = 1 THEN 'positive' ELSE 'clear' END) AS status
         FROM habits h
         LEFT JOIN habit_logs hl ON hl.habit_id = h.id AND hl.date = ? AND hl.user_id = ?
@@ -1888,6 +1947,8 @@ router.get('/day/:date', async (req: Request, res: Response) => {
         emoji: h.emoji || null,
         category: h.category || null,
         isNegative: !!h.is_negative,
+        targetMinutes: h.target_minutes ?? null,
+        minutesLogged: h.minutes_logged ?? 0,
         status: h.status || (h.completed ? 'positive' : 'clear'),
         completed: h.is_negative ? (h.status || 'clear') !== 'negative' : !!h.completed,
       })),
@@ -1898,11 +1959,17 @@ router.get('/day/:date', async (req: Request, res: Response) => {
         name: habit.name,
         description: habit.description,
         category: habit.category,
+        kind: habit.kind,
         scoringMode: habit.scoringMode,
         pointsPositive: habit.pointsPositive,
         pointsNegative: habit.pointsNegative,
+        minutesPerBlock: habit.minutesPerBlock,
+        pointsPerBlock: habit.pointsPerBlock,
+        dailyTargetMinutes: habit.dailyTargetMinutes,
         linkedPersonalHabitId: habit.linkedPersonalHabitId,
         status: habit.status,
+        minutesLogged: habit.minutesLogged,
+        pointsAwarded: habit.pointsAwarded,
       })),
       goals: activeGoals.map(g => {
         const current = parseFloat(g.current_value) || 0;
@@ -2063,7 +2130,7 @@ router.delete('/calendar/events/:id', async (req: Request, res: Response) => {
   const tokens = await getCalendarTokens(userId);
   if (!tokens) return res.status(403).json({ error: 'Calendario no conectado' });
 
-  await deleteEvent(tokens, decodeURIComponent(req.params.id));
+  await deleteEvent(tokens, decodeURIComponent(String(req.params.id)));
   res.json({ ok: true });
 });
 

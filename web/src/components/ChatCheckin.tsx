@@ -173,16 +173,17 @@ export default function ChatCheckin({ onComplete }: Props) {
 
   // ── Handle AI response ──
   const handleResponse = useCallback((res: ChatResponse, audioTranscription?: string) => {
-    // Add AI response
-    setMessages(prev => [...prev, {
-      id: `ai-${Date.now()}`,
-      direction: 'out',
-      content: res.response,
-      extractedData: res.extractedData,
-      timestamp: new Date().toISOString(),
-    }]);
-    setCurrentEntry(res.currentEntry);
-    setStreak(res.streak);
+    if (res.response) {
+      setMessages(prev => [...prev, {
+        id: `ai-${Date.now()}`,
+        direction: 'out',
+        content: res.response,
+        extractedData: res.extractedData,
+        timestamp: new Date().toISOString(),
+      }]);
+      if (res.currentEntry !== null) setCurrentEntry(res.currentEntry);
+      if (res.streak > 0) setStreak(res.streak);
+    }
     setSending(false);
   }, []);
 
