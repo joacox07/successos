@@ -4,14 +4,21 @@ export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   phone: text('phone').notNull().unique(),
   name: text('name'),
+  username: text('username'),
   timezone: text('timezone').default('America/Argentina/Buenos_Aires'),
   onboardingComplete: integer('onboarding_complete', { mode: 'boolean' }).default(false),
   onboardingStep: integer('onboarding_step').default(0),
   morningCheckIn: text('morning_check_in').default('07:00'),
   eveningCheckIn: text('evening_check_in').default('22:00'),
+  passwordHash: text('password_hash'),
+  passwordSalt: text('password_salt'),
+  email: text('email'),
+  profileComplete: integer('profile_complete', { mode: 'boolean' }).default(false),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
-});
+}, (table) => ({
+  usernameIdx: uniqueIndex('users_username_idx').on(table.username),
+}));
 
 export const profiles = sqliteTable('profiles', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -197,6 +204,8 @@ export const habits = sqliteTable('habits', {
   emoji: text('emoji'),
   category: text('category'), // salud, espiritual, personal, educacion
   frequency: text('frequency').default('daily'), // daily, weekdays, custom
+  isNegative: integer('is_negative', { mode: 'boolean' }).default(false), // true = success when NOT done (e.g. alcohol)
+  targetMinutes: integer('target_minutes'), // for time-based habits (e.g. reading 30min)
   active: integer('active', { mode: 'boolean' }).default(true),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -210,10 +219,84 @@ export const habitLogs = sqliteTable('habit_logs', {
   userId: integer('user_id').notNull().references(() => users.id),
   date: text('date').notNull(),
   completed: integer('completed', { mode: 'boolean' }).default(true),
+  status: text('status').default('positive'),
+  minutesLogged: integer('minutes_logged').default(0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   uniqueLog: uniqueIndex('habit_logs_unique_idx').on(table.habitId, table.date),
   userDateIdx: index('habit_logs_user_date_idx').on(table.userId, table.date),
+}));
+
+export const habitCompetitions = sqliteTable('habit_competitions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  createdByUserId: integer('created_by_user_id').references(() => users.id),
+  createdByMode: text('created_by_mode').notNull().default('user'),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const competitionParticipants = sqliteTable('competition_participants', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  competitionId: integer('competition_id').notNull().references(() => habitCompetitions.id),
+  userId: integer('user_id').notNull().references(() => users.id),
+  role: text('role').notNull().default('member'),
+  inviteStatus: text('invite_status').notNull().default('pending'),
+  joinedAt: text('joined_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  uniqueParticipant: uniqueIndex('competition_participants_unique_idx').on(table.competitionId, table.userId),
+  competitionIdx: index('competition_participants_competition_idx').on(table.competitionId),
+  userIdx: index('competition_participants_user_idx').on(table.userId),
+}));
+
+export const competitionHabits = sqliteTable('competition_habits', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  competitionId: integer('competition_id').notNull().references(() => habitCompetitions.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category'),
+  kind: text('kind').notNull().default('event'),
+  scoringMode: text('scoring_mode').notNull().default('positive_only'),
+  pointsPositive: integer('points_positive').notNull().default(1),
+  pointsNegative: integer('points_negative').notNull().default(0),
+  minutesPerBlock: integer('minutes_per_block'),
+  pointsPerBlock: integer('points_per_block'),
+  dailyTargetMinutes: integer('daily_target_minutes'),
+  active: integer('active', { mode: 'boolean' }).default(true),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  competitionIdx: index('competition_habits_competition_idx').on(table.competitionId),
+}));
+
+export const competitionHabitLinks = sqliteTable('competition_habit_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  competitionHabitId: integer('competition_habit_id').notNull().references(() => competitionHabits.id),
+  userId: integer('user_id').notNull().references(() => users.id),
+  personalHabitId: integer('personal_habit_id').notNull().references(() => habits.id),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  uniqueLink: uniqueIndex('competition_habit_links_unique_idx').on(table.competitionHabitId, table.userId),
+  habitIdx: index('competition_habit_links_habit_idx').on(table.competitionHabitId),
+  userIdx: index('competition_habit_links_user_idx').on(table.userId),
+}));
+
+export const competitionHabitLogs = sqliteTable('competition_habit_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  competitionHabitId: integer('competition_habit_id').notNull().references(() => competitionHabits.id),
+  userId: integer('user_id').notNull().references(() => users.id),
+  date: text('date').notNull(),
+  status: text('status').notNull().default('positive'),
+  minutesLogged: integer('minutes_logged').default(0),
+  pointsAwarded: integer('points_awarded').default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  uniqueLog: uniqueIndex('competition_habit_logs_unique_idx').on(table.competitionHabitId, table.userId, table.date),
+  habitDateIdx: index('competition_habit_logs_habit_date_idx').on(table.competitionHabitId, table.date),
+  userDateIdx: index('competition_habit_logs_user_date_idx').on(table.userId, table.date),
 }));
 
 // ── Study ──
@@ -262,6 +345,20 @@ export const flashcards = sqliteTable('flashcards', {
 }, (table) => ({
   deckIdx: index('flashcards_deck_idx').on(table.deckId),
   reviewIdx: index('flashcards_review_idx').on(table.nextReview),
+}));
+
+// ── Google Calendar OAuth Tokens ──
+
+export const calendarTokens = sqliteTable('calendar_tokens', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  accessToken: text('access_token').notNull(),
+  refreshToken: text('refresh_token'),
+  expiryDate: text('expiry_date'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  userIdx: uniqueIndex('calendar_tokens_user_idx').on(table.userId),
 }));
 
 export const studySubjects = sqliteTable('study_subjects', {

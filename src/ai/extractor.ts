@@ -13,8 +13,24 @@ const GoalProgressSchema = z.object({
   note: z.string().nullable().optional(),
 });
 
+const NewHabitSchema = z.object({
+  name: z.string(),
+  category: z.string().nullable().optional(),
+  frequency: z.enum(['daily', 'weekly']).optional().default('daily'),
+  isNegative: z.boolean().optional().default(false),
+});
+
+const HabitCompletionSchema = z.object({
+  habitName: z.string(),
+  status: z.enum(['positive', 'negative']).default('positive'),
+  durationMinutes: z.number().int().positive().nullable().optional(),
+});
+
 const ExtractionSchema = z.object({
+  targetDate: z.string().nullable().optional(),
   goalProgress: z.preprocess(v => v ?? [], z.array(GoalProgressSchema)).optional().default([]),
+  newHabits: z.preprocess(v => v ?? [], z.array(NewHabitSchema)).optional().default([]),
+  habitCompletions: z.preprocess(v => v ?? [], z.array(HabitCompletionSchema)).optional().default([]),
   sleep: z.object({
     bedtime: z.string().nullable().optional(),
     wakeTime: z.string().nullable().optional(),
@@ -65,10 +81,11 @@ export async function extractData(
   userText: string,
   goals: { id: number; title: string; category: string; metric: string | null; unit: string | null }[],
   todayData: Record<string, unknown> | null,
+  existingHabits?: { id: number; name: string; category: string | null; isNegative?: boolean }[],
 ): Promise<ExtractionResult> {
   const openai = getOpenAI();
 
-  const userPrompt = buildExtractionUserPrompt(userText, goals, todayData);
+  const userPrompt = buildExtractionUserPrompt(userText, goals, todayData, existingHabits);
 
   const response = await withRetry(
     () =>
@@ -87,16 +104,20 @@ export async function extractData(
   const rawContent = response.choices[0]?.message?.content;
   if (!rawContent) {
     logger.warn('Empty extraction response');
-    return { goalProgress: [] };
+    return { targetDate: null, goalProgress: [], newHabits: [], habitCompletions: [] };
   }
 
   try {
     const parsed = JSON.parse(rawContent);
     const result = ExtractionSchema.parse(parsed);
-    logger.info({ goalProgressCount: result.goalProgress.length }, 'Data extracted');
+    logger.info({
+      goalProgressCount: result.goalProgress.length,
+      newHabits: result.newHabits.length,
+      habitCompletions: result.habitCompletions.length,
+    }, 'Data extracted');
     return result;
   } catch (err) {
     logger.error({ err, rawContent }, 'Extraction parse failed');
-    return { goalProgress: [] };
+    return { targetDate: null, goalProgress: [], newHabits: [], habitCompletions: [] };
   }
 }

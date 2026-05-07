@@ -1,6 +1,6 @@
-import { eq, and, gte, lte, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, asc, sql, ne } from 'drizzle-orm';
 import { getDb } from './client.js';
-import { users, profiles, goals, dailyEntries, goalLogs, messages, patterns, reports, onboardingState, sentCheckins, authTokens, habits, habitLogs, studySessions, flashcardDecks, flashcards, studySubjects } from './schema.js';
+import { users, profiles, goals, dailyEntries, goalLogs, messages, patterns, reports, onboardingState, sentCheckins, authTokens, habits, habitLogs, studySessions, flashcardDecks, flashcards, studySubjects, calendarTokens } from './schema.js';
 
 // ── Users ──
 
@@ -242,12 +242,12 @@ export async function markCheckinSent(userId: number, checkinType: string, date:
 
 export async function getRecentMessagesAsc(userId: number, limit = 10) {
   const db = getDb();
-  // Get last N messages then reverse to chronological
+  // Subquery: get last N messages in chronological order, exclude guide messages
   const msgs = await db.select().from(messages)
-    .where(eq(messages.userId, userId))
+    .where(and(eq(messages.userId, userId), ne(messages.contentType, 'guide')))
     .orderBy(desc(messages.timestamp))
     .limit(limit);
-  return msgs.reverse();
+  return [...msgs].reverse();
 }
 
 // ── Auth Tokens ──
@@ -283,6 +283,14 @@ export async function getUserHabits(userId: number) {
     .where(and(eq(habits.userId, userId), eq(habits.active, true)));
 }
 
+export async function getHabitByIdForUser(habitId: number, userId: number) {
+  const db = getDb();
+  const [habit] = await db.select().from(habits)
+    .where(and(eq(habits.id, habitId), eq(habits.userId, userId), eq(habits.active, true)))
+    .limit(1);
+  return habit ?? null;
+}
+
 export async function updateHabit(habitId: number, data: Partial<typeof habits.$inferInsert>) {
   const db = getDb();
   await db.update(habits)
@@ -297,17 +305,123 @@ export async function deactivateHabit(habitId: number) {
     .where(eq(habits.id, habitId));
 }
 
+export async function setHabitLogStatus(
+  habitId: number,
+  userId: number,
+  date: string,
+  status: 'positive' | 'negative' | 'clear',
+) {
+  const db = getDb();
+  const [habit] = await db.select({
+    id: habits.id,
+    isNegative: habits.isNegative,
+  }).from(habits)
+    .where(and(eq(habits.id, habitId), eq(habits.userId, userId), eq(habits.active, true)))
+    .limit(1);
+
+  if (!habit) throw new Error('Hábito no encontrado');
+
+  const normalizedStatus = habit.isNegative && status === 'positive' ? 'clear' : status;
+  const [existing] = await db.select().from(habitLogs)
+    .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.userId, userId), eq(habitLogs.date, date)))
+    .limit(1);
+
+  if (normalizedStatus === 'clear') {
+    if (existing) await db.delete(habitLogs).where(eq(habitLogs.id, existing.id));
+    return { status: 'clear' as const, marked: false, isNegative: !!habit.isNegative };
+  }
+
+  const completed = normalizedStatus === 'positive';
+  if (existing) {
+    await db.update(habitLogs)
+      .set({ completed, status: normalizedStatus, minutesLogged: 0 })
+      .where(eq(habitLogs.id, existing.id));
+  } else {
+    await db.insert(habitLogs).values({ habitId, userId, date, status: normalizedStatus, completed, minutesLogged: 0 });
+  }
+
+  return { status: normalizedStatus, marked: true, isNegative: !!habit.isNegative };
+}
+
+export async function addHabitLogMinutes(
+  habitId: number,
+  userId: number,
+  date: string,
+  minutesDelta: number,
+) {
+  const db = getDb();
+  const [habit] = await db.select({
+    id: habits.id,
+    isNegative: habits.isNegative,
+    targetMinutes: habits.targetMinutes,
+  }).from(habits)
+    .where(and(eq(habits.id, habitId), eq(habits.userId, userId), eq(habits.active, true)))
+    .limit(1);
+
+  if (!habit) throw new Error('Hábito no encontrado');
+  if (habit.isNegative) throw new Error('Los hábitos de evitación no aceptan minutos');
+
+  const safeDelta = Math.max(0, Math.round(minutesDelta));
+  const [existing] = await db.select({
+    id: habitLogs.id,
+    minutesLogged: habitLogs.minutesLogged,
+  }).from(habitLogs)
+    .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.userId, userId), eq(habitLogs.date, date)))
+    .limit(1);
+
+  const nextMinutes = Math.max(0, (existing?.minutesLogged ?? 0) + safeDelta);
+  const status = nextMinutes > 0 ? 'positive' : 'clear';
+  const completed = nextMinutes > 0;
+
+  if (nextMinutes === 0) {
+    if (existing) await db.delete(habitLogs).where(eq(habitLogs.id, existing.id));
+    return { minutesLogged: 0, targetMinutes: habit.targetMinutes ?? null, completed: false, status: 'clear' as const };
+  }
+
+  if (existing) {
+    await db.update(habitLogs)
+      .set({ minutesLogged: nextMinutes, status, completed })
+      .where(eq(habitLogs.id, existing.id));
+  } else {
+    await db.insert(habitLogs).values({
+      habitId,
+      userId,
+      date,
+      status,
+      completed,
+      minutesLogged: nextMinutes,
+    });
+  }
+
+  return {
+    minutesLogged: nextMinutes,
+    targetMinutes: habit.targetMinutes ?? null,
+    completed: true,
+    status: 'positive' as const,
+  };
+}
+
 export async function toggleHabitLog(habitId: number, userId: number, date: string) {
   const db = getDb();
-  const [existing] = await db.select().from(habitLogs)
-    .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.date, date)))
+  const [habit] = await db.select({
+    id: habits.id,
+    isNegative: habits.isNegative,
+  }).from(habits)
+    .where(and(eq(habits.id, habitId), eq(habits.userId, userId), eq(habits.active, true)))
     .limit(1);
-  if (existing) {
-    await db.delete(habitLogs).where(eq(habitLogs.id, existing.id));
-    return false; // unchecked
-  }
-  await db.insert(habitLogs).values({ habitId, userId, date });
-  return true; // checked
+  if (!habit) throw new Error('Hábito no encontrado');
+
+  const [existing] = await db.select({
+    id: habitLogs.id,
+    status: habitLogs.status,
+  }).from(habitLogs)
+    .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.userId, userId), eq(habitLogs.date, date)))
+    .limit(1);
+
+  const activeStatus = habit.isNegative ? 'negative' : 'positive';
+  const nextStatus = existing?.status === activeStatus ? 'clear' : activeStatus;
+  const result = await setHabitLogStatus(habitId, userId, date, nextStatus as 'positive' | 'negative' | 'clear');
+  return result.marked;
 }
 
 export async function getHabitLogs(habitId: number, startDate: string, endDate: string) {
@@ -325,8 +439,21 @@ export async function getHabitsToday(userId: number, date: string) {
   const userHabits = await getUserHabits(userId);
   const logs = await db.select().from(habitLogs)
     .where(and(eq(habitLogs.userId, userId), eq(habitLogs.date, date)));
-  const completedIds = new Set(logs.map(l => l.habitId));
-  return { habits: userHabits, today: Object.fromEntries(userHabits.map(h => [h.id, completedIds.has(h.id)])) };
+  const statusByHabitId = new Map(logs.map((log) => [log.habitId, log.status || (log.completed ? 'positive' : 'clear')]));
+  const minutesByHabitId = new Map(logs.map((log) => [log.habitId, log.minutesLogged || 0]));
+  return {
+    habits: userHabits,
+    today: Object.fromEntries(
+      userHabits.map((habit) => {
+        const status = statusByHabitId.get(habit.id);
+        const isMarked = habit.isNegative ? status === 'negative' : status === 'positive';
+        return [habit.id, isMarked];
+      }),
+    ),
+    minutes: Object.fromEntries(
+      userHabits.map((habit) => [habit.id, minutesByHabitId.get(habit.id) || 0]),
+    ),
+  };
 }
 
 // ── Study Sessions ──
@@ -463,7 +590,7 @@ export async function markSubjectStudied(subjectId: number) {
   const db = getDb();
   const [subject] = await db.select().from(studySubjects).where(eq(studySubjects.id, subjectId)).limit(1);
   if (!subject) return null;
-  const newStage = Math.min(subject.reviewStage + 1, REVIEW_INTERVALS.length - 1);
+  const newStage = Math.min((subject.reviewStage ?? 0) + 1, REVIEW_INTERVALS.length - 1);
   const daysUntilNext = REVIEW_INTERVALS[newStage] || 30;
   const nextDate = new Date();
   nextDate.setDate(nextDate.getDate() + daysUntilNext);
@@ -478,4 +605,55 @@ export async function markSubjectStudied(subjectId: number) {
 export async function deleteStudySubject(subjectId: number) {
   const db = getDb();
   await db.delete(studySubjects).where(eq(studySubjects.id, subjectId));
+}
+
+// ── Calendar Tokens ──
+
+export async function getCalendarTokens(userId: number) {
+  const db = getDb();
+  const [row] = await db.select().from(calendarTokens).where(eq(calendarTokens.userId, userId)).limit(1);
+  return row ?? null;
+}
+
+export async function upsertCalendarTokens(userId: number, data: { accessToken: string; refreshToken?: string | null; expiryDate?: string | null }) {
+  const db = getDb();
+  const [existing] = await db.select().from(calendarTokens).where(eq(calendarTokens.userId, userId)).limit(1);
+  if (existing) {
+    await db.update(calendarTokens).set({
+      accessToken: data.accessToken,
+      ...(data.refreshToken ? { refreshToken: data.refreshToken } : {}),
+      ...(data.expiryDate ? { expiryDate: data.expiryDate } : {}),
+      updatedAt: new Date().toISOString(),
+    }).where(eq(calendarTokens.userId, userId));
+    return { ...existing, ...data };
+  }
+  const [row] = await db.insert(calendarTokens).values({
+    userId,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken || null,
+    expiryDate: data.expiryDate || null,
+  }).returning();
+  return row;
+}
+
+// ── Guide Messages ──
+
+export async function logGuideMessage(data: { userId: number; direction: 'in' | 'out'; content: string }) {
+  const db = getDb();
+  const [msg] = await db.insert(messages).values({
+    userId: data.userId,
+    direction: data.direction,
+    contentType: 'guide',
+    rawContent: data.content,
+  }).returning();
+  return msg;
+}
+
+export async function getGuideHistory(userId: number, limit = 20) {
+  const db = getDb();
+  const msgs = await db.select().from(messages)
+    .where(and(eq(messages.userId, userId), eq(messages.contentType, 'guide')))
+    .orderBy(desc(messages.timestamp))
+    .limit(limit);
+  return msgs.reverse(); // chronological order
 }

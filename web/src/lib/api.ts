@@ -1,7 +1,35 @@
 const API_BASE = '/api';
 
+type AuthTokenPayload = {
+  exp?: number;
+  isAdmin?: boolean;
+  profileComplete?: boolean;
+};
+
 function getToken(): string | null {
   return localStorage.getItem('successos_token');
+}
+
+function normalizeExpiry(exp?: number): number | null {
+  if (!Number.isFinite(exp)) return null;
+  return (exp as number) < 1_000_000_000_000 ? (exp as number) * 1000 : (exp as number);
+}
+
+function decodeTokenPayload(token: string | null): AuthTokenPayload | null {
+  if (!token) return null;
+  try {
+    const [payloadB64] = token.split('.');
+    if (!payloadB64) return null;
+    const normalized = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    return JSON.parse(atob(padded)) as AuthTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+function readTokenPayload() {
+  return decodeTokenPayload(getToken());
 }
 
 export function setToken(token: string) {
@@ -13,36 +41,44 @@ export function clearToken() {
 }
 
 export function isAuthenticated(): boolean {
-  const token = getToken();
-  if (!token) return false;
-  try {
-    const [payloadB64] = token.split('.');
-    const payload = JSON.parse(atob(payloadB64));
-    return payload.exp > Date.now();
-  } catch {
-    return false;
-  }
+  const payload = readTokenPayload();
+  const expiry = normalizeExpiry(payload?.exp);
+  return !!expiry && expiry > Date.now();
 }
 
-async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+export function isAdminToken(): boolean {
+  const payload = readTokenPayload();
+  const expiry = normalizeExpiry(payload?.exp);
+  return !!payload?.isAdmin && !!expiry && expiry > Date.now();
+}
+
+export function isProfileComplete(): boolean {
+  const payload = readTokenPayload();
+  if (!payload) return true;
+  if (payload.isAdmin) return true;
+  return !!payload.profileComplete;
+}
+
+async function fetchApi<T>(path: string, options?: RequestInit & { redirectOnUnauthorized?: boolean }): Promise<T> {
   const token = getToken();
+  const { redirectOnUnauthorized = true, ...requestOptions } = options || {};
   const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
+    ...requestOptions,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
+      ...requestOptions.headers,
     },
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && redirectOnUnauthorized) {
     clearToken();
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    const error = await res.json().catch(() => ({ error: `Error del servidor (${res.status})` }));
     throw new Error(error.error || `HTTP ${res.status}`);
   }
 
@@ -52,9 +88,10 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 // Auth
 export const api = {
   login: (username: string, password: string) =>
-    fetchApi<{ ok: boolean; token: string }>('/auth/login', {
+    fetchApi<{ ok: true; token: string; isAdmin: boolean; profileComplete?: boolean }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+      redirectOnUnauthorized: false,
     }),
 
   // Chat (conversational AI input)
@@ -93,6 +130,9 @@ export const api = {
   getCheckinToday: () =>
     fetchApi<CheckinTodayData>('/checkin/today'),
 
+  getCheckinByDate: (date: string) =>
+    fetchApi<CheckinTodayData>(`/checkin/${date}`),
+
   submitCheckin: (data: Record<string, any>) =>
     fetchApi<{ ok: boolean }>('/checkin', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -100,7 +140,12 @@ export const api = {
   getDashboard: () =>
     fetchApi<DashboardData>('/dashboard'),
 
-  getMetrics: (range: 'week' | 'month' | 'year' = 'week') =>
+  getHabitWidgetSummary: (ids?: number[]) =>
+    fetchApi<HabitWidgetSummary>(
+      `/dashboard/habit-summary${ids && ids.length > 0 ? `?ids=${ids.join(',')}` : ''}`,
+    ),
+
+  getMetrics: (range: 'week' | 'month' | 'total' = 'week') =>
     fetchApi<MetricsData>(`/metrics?range=${range}`),
 
   getGoals: () =>
@@ -116,13 +161,13 @@ export const api = {
     fetchApi<TimelineData>(`/timeline?limit=${limit}`),
 
   // Habits
-  getHabits: () =>
-    fetchApi<HabitsData>('/habits'),
+  getHabits: (date?: string) =>
+    fetchApi<HabitsData>(`/habits${date ? `?date=${date}` : ''}`),
 
-  createHabit: (data: { name: string; emoji?: string; category?: string; frequency?: string }) =>
+  createHabit: (data: { name: string; emoji?: string; category?: string; frequency?: string; isNegative?: boolean }) =>
     fetchApi<{ ok: boolean; habit: Habit }>('/habits', { method: 'POST', body: JSON.stringify(data) }),
 
-  updateHabit: (id: number, data: { name?: string; emoji?: string; category?: string }) =>
+  updateHabit: (id: number, data: { name?: string; emoji?: string; category?: string; isNegative?: boolean }) =>
     fetchApi<{ ok: boolean }>(`/habits/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   deleteHabit: (id: number) =>
@@ -135,6 +180,109 @@ export const api = {
 
   getHabitCalendar: (id: number, month: string) =>
     fetchApi<HabitCalendarData>(`/habits/${id}/calendar?month=${month}`),
+
+  // Competitions
+  discoverCompetitionUser: (username: string) =>
+    fetchApi<CompetitionInviteSearchResult>(`/competition/discover?username=${encodeURIComponent(username)}`),
+
+  discoverCompetitionInvite: (competitionId: number, username: string) =>
+    fetchApi<CompetitionInviteSearchResult>(`/competition/discover?competitionId=${competitionId}&username=${encodeURIComponent(username)}`),
+
+  getCompetitions: () =>
+    fetchApi<{ competitions: CompetitionSummary[] }>('/competitions'),
+
+  getCompetitionInvites: () =>
+    fetchApi<{ invites: CompetitionInvite[] }>('/competitions/invites'),
+
+  createCompetition: (data: { name: string; participantUserIds?: number[] }) =>
+    fetchApi<{ ok: boolean; competitionId: number }>('/competitions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateCompetition: (id: number, data: { name: string }) =>
+    fetchApi<{ ok: boolean }>(`/competitions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteCompetition: (id: number) =>
+    fetchApi<{ ok: boolean }>(`/competitions/${id}`, { method: 'DELETE' }),
+
+  getCompetitionDetail: (id: number) =>
+    fetchApi<CompetitionDetail>(`/competitions/${id}`),
+
+  getCompetitionInviteOptions: (id: number, limit = 10) =>
+    fetchApi<{ candidates: CompetitionInviteCandidate[] }>(`/competitions/${id}/invite-options?limit=${limit}`),
+
+  inviteToCompetition: (id: number, username: string) =>
+    fetchApi<{ ok: boolean; invitedUser: CompetitionUser }>(`/competitions/${id}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    }),
+
+  respondCompetitionInvite: (id: number, action: 'accepted' | 'declined') =>
+    fetchApi<{ ok: boolean }>(`/competitions/${id}/respond-invite`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    }),
+
+  createCompetitionHabit: (id: number, data: CreateCompetitionHabit) =>
+    fetchApi<{ ok: boolean; habitId: number }>(`/competitions/${id}/habits`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateCompetitionHabit: (competitionId: number, competitionHabitId: number, data: CreateCompetitionHabit) =>
+    fetchApi<{ ok: boolean }>(`/competitions/${competitionId}/habits/${competitionHabitId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteCompetitionHabit: (competitionId: number, competitionHabitId: number) =>
+    fetchApi<{ ok: boolean }>(`/competitions/${competitionId}/habits/${competitionHabitId}`, {
+      method: 'DELETE',
+    }),
+
+  getCompetitionStats: (id: number, range: CompetitionRange) =>
+    fetchApi<CompetitionDashboardStats>(`/competitions/${id}/stats?range=${range}`),
+
+  linkCompetitionHabitExisting: (competitionId: number, competitionHabitId: number, personalHabitId: number) =>
+    fetchApi<{ ok: boolean }>(`/competitions/${competitionId}/habits/${competitionHabitId}/link-existing`, {
+      method: 'POST',
+      body: JSON.stringify({ personalHabitId }),
+    }),
+
+  applySuggestedCompetitionHabitLink: (competitionId: number, competitionHabitId: number) =>
+    fetchApi<{ ok: boolean; personalHabitId: number; personalHabitName: string }>(
+      `/competitions/${competitionId}/habits/${competitionHabitId}/apply-suggested-link`,
+      { method: 'POST' },
+    ),
+
+  createAndLinkCompetitionHabit: (competitionId: number, competitionHabitId: number) =>
+    fetchApi<{ ok: boolean; personalHabitId: number }>(`/competitions/${competitionId}/habits/${competitionHabitId}/create-and-link`, {
+      method: 'POST',
+    }),
+
+  unlinkCompetitionHabit: (competitionId: number, competitionHabitId: number) =>
+    fetchApi<{ ok: boolean }>(`/competitions/${competitionId}/habits/${competitionHabitId}/link`, {
+      method: 'DELETE',
+    }),
+
+  logCompetitionHabit: (competitionId: number, competitionHabitId: number, status: CompetitionLogStatus, date?: string) =>
+    fetchApi<CompetitionHabitLogResult>(`/competitions/${competitionId}/habits/${competitionHabitId}/log`, {
+      method: 'POST',
+      body: JSON.stringify({ status, date }),
+    }),
+
+  logCompetitionHabitDuration: (competitionId: number, competitionHabitId: number, minutesDelta: number, date?: string) =>
+    fetchApi<CompetitionHabitLogResult>(`/competitions/${competitionId}/habits/${competitionHabitId}/log-duration`, {
+      method: 'POST',
+      body: JSON.stringify({ minutesDelta, date }),
+    }),
+
+  checkUsernameAvailability: (username: string) =>
+    fetchApi<{ available: boolean; normalized: string; message: string }>(`/profile/username-availability?username=${encodeURIComponent(username)}`),
 
   // Study
   createStudySession: (data: CreateStudySession) =>
@@ -206,7 +354,7 @@ export const api = {
   getProfile: () =>
     fetchApi<ProfileData>('/profile'),
 
-  updateProfile: (data: { name?: string; avatar?: AvatarConfig }) =>
+  updateProfile: (data: { name?: string; username?: string; avatar?: AvatarConfig }) =>
     fetchApi<{ ok: boolean }>('/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
   updateSchedule: (data: { morningCheckIn?: string; eveningCheckIn?: string }) =>
@@ -219,7 +367,69 @@ export const api = {
   // Data reset
   resetAllData: () =>
     fetchApi<{ ok: boolean; message: string }>('/data/reset', { method: 'DELETE', body: JSON.stringify({ confirm: 'BORRAR TODO' }) }),
+
+  // Admin
+  adminGetUsers: () =>
+    fetchApi<{ users: AdminUser[] }>('/admin/users'),
+
+  adminCreateUser: (data: { name: string; phone?: string; password: string }) =>
+    fetchApi<{ ok: boolean; userId: number }>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+
+  adminDeleteUser: (id: number) =>
+    fetchApi<{ ok: boolean }>(`/admin/users/${id}`, { method: 'DELETE' }),
+
+  adminResetPassword: (id: number, password: string) =>
+    fetchApi<{ ok: boolean }>(`/admin/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),
+
+  // Profile setup
+  setupProfile: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    newPassword: string;
+    age?: number;
+    height?: number;
+    weight?: number;
+    habits?: Array<{ name: string; emoji?: string; category?: string }>;
+  }) =>
+    fetchApi<{ ok: boolean; token: string }>('/profile/setup', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Guide chat (pattern analysis AI)
+  sendGuideMessage: (text: string) =>
+    fetchApi<{ response: string }>('/guide/chat', { method: 'POST', body: JSON.stringify({ text }) }),
+
+  getGuideHistory: () =>
+    fetchApi<GuideHistoryData>('/guide/chat'),
+
+  // Calendar
+  getCalendarStatus: () =>
+    fetchApi<{ connected: boolean }>('/calendar/status'),
+
+  getCalendarConnectUrl: () =>
+    fetchApi<{ authUrl: string }>('/calendar/connect'),
+
+  getCalendarEvents: (date?: string, days?: number) =>
+    fetchApi<{ events: CalendarEvent[] }>(`/calendar/events${date ? `?date=${date}&days=${days ?? 14}` : `?days=${days ?? 14}`}`),
+
+  createCalendarEvent: (data: { summary: string; date: string; time?: string; endTime?: string; description?: string; allDay?: boolean }) =>
+    fetchApi<{ ok: boolean; event: CalendarEvent }>('/calendar/events', { method: 'POST', body: JSON.stringify(data) }),
+
+  deleteCalendarEvent: (id: string) =>
+    fetchApi<{ ok: boolean }>(`/calendar/events/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  calendarChat: (text: string, history?: { role: string; content: string }[], date?: string) =>
+    fetchApi<{ response: string }>('/calendar/chat', { method: 'POST', body: JSON.stringify({ text, history, date }) }),
 };
+
+// Admin
+export interface AdminUser {
+  id: number;
+  name: string | null;
+  phone: string;
+  email: string | null;
+  profile_complete: number;
+  created_at: string;
+}
 
 // Types
 export type AvatarConfig =
@@ -228,6 +438,7 @@ export type AvatarConfig =
 
 export interface ProfileData {
   name: string;
+  username: string | null;
   morningCheckIn: string;
   eveningCheckIn: string;
   createdAt: string;
@@ -269,6 +480,8 @@ export interface MetricsData {
 export interface MetricEntry {
   date: string;
   sleepQuality: number | null;
+  bedtime: string | null;
+  wakeTime: string | null;
   mood: number | null;
   energyLevel: number | null;
   exerciseDone: boolean | null;
@@ -328,19 +541,283 @@ export interface Habit {
   emoji: string | null;
   category: string | null;
   frequency: string;
+  isNegative?: boolean;
+  targetMinutes?: number | null;
 }
 
 export interface HabitsData {
   habits: Habit[];
   today: Record<number, boolean>;
+  minutes?: Record<number, number>;
 }
 
 export interface HabitCalendarData {
   dates: string[];
+  successDates: string[];
+  failureDates: string[];
   streak: number;
   completionRate: number;
   daysCompleted: number;
   totalDays: number;
+}
+
+export interface HabitWidgetSummary {
+  date: string;
+  completedCount: number;
+  totalCount: number;
+  completionRate: number;
+  streak: number;
+  criticalHabits: Array<{
+    id: number;
+    name: string;
+    isNegative: boolean;
+    status: 'positive' | 'negative' | 'clear';
+    completed: boolean;
+  }>;
+  pendingHabits: Array<{
+    id: number;
+    name: string;
+    isNegative: boolean;
+    status: 'positive' | 'negative' | 'clear';
+    completed: boolean;
+  }>;
+}
+
+export type CompetitionRange = 'week' | 'month' | 'total';
+export type CompetitionScoringMode = 'positive_only' | 'negative_only' | 'both';
+export type CompetitionLogStatus = 'positive' | 'negative' | 'clear';
+export type CompetitionHabitKind = 'event' | 'duration';
+
+export interface CompetitionUser {
+  id: number;
+  name: string | null;
+  username: string | null;
+}
+
+export type CompetitionInviteSearchStatus =
+  | 'found'
+  | 'not_found'
+  | 'self'
+  | 'already_invited'
+  | 'already_participant';
+
+export interface CompetitionInviteSearchResult {
+  status: CompetitionInviteSearchStatus;
+  message: string;
+  user: CompetitionUser | null;
+  canInvite: boolean;
+}
+
+export interface CompetitionInviteCandidate {
+  id: number;
+  name: string | null;
+  username: string | null;
+  status: 'invitable' | 'self' | 'pending' | 'accepted';
+  message: string;
+  canInvite: boolean;
+}
+
+export interface CompetitionSummary {
+  id: number;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  participantCount: number;
+  acceptedCount: number;
+  pendingCount: number;
+  role: string | null;
+  inviteStatus: string | null;
+}
+
+export interface CompetitionInvite {
+  competitionId: number;
+  name: string;
+  invitedAt: string;
+  ownerUsername: string | null;
+  ownerName: string | null;
+}
+
+export interface CompetitionParticipant {
+  userId: number;
+  name: string | null;
+  username: string | null;
+  role: string;
+  inviteStatus: string;
+  joinedAt: string | null;
+}
+
+export interface CompetitionHabit {
+  id: number;
+  competitionId: number;
+  name: string;
+  description: string | null;
+  category: string | null;
+  kind: CompetitionHabitKind;
+  scoringMode: CompetitionScoringMode;
+  pointsPositive: number;
+  pointsNegative: number;
+  minutesPerBlock: number | null;
+  pointsPerBlock: number | null;
+  dailyTargetMinutes: number | null;
+  active: number;
+  linkedPersonalHabitId: number | null;
+  todayStatus: CompetitionLogStatus;
+  todayMinutes?: number;
+  todayPoints?: number;
+  syncState: 'linked' | 'suggested_match' | 'create_in_profile';
+  suggestedPersonalHabitId?: number | null;
+  suggestedPersonalHabitName?: string | null;
+}
+
+export interface CompetitionLeaderboardRow {
+  userId: number;
+  name: string;
+  username: string | null;
+  points: number;
+  positiveDays: number;
+  negativeDays: number;
+  completionRate: number;
+  currentStreak: number;
+  bestStreak: number;
+}
+
+export interface CompetitionDetail {
+  competition: {
+    id: number;
+    name: string;
+    status: string;
+    createdByMode: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  viewer: {
+    userId: number | null;
+    username: string | null;
+    missingUsername: boolean;
+  };
+  participants: CompetitionParticipant[];
+  habits: CompetitionHabit[];
+  personalHabits: Habit[];
+}
+
+export interface CompetitionTimelineParticipantPoint {
+  userId: number;
+  name: string;
+  username: string | null;
+  points: number;
+  cumulativePoints: number;
+}
+
+export interface CompetitionTimelineRow {
+  date: string;
+  positiveCount: number;
+  negativeCount: number;
+  clearCount: number;
+  netPoints: number;
+  minutesLogged?: number;
+  participants: CompetitionTimelineParticipantPoint[];
+}
+
+export interface CompetitionHabitParticipantRow extends CompetitionLeaderboardRow {
+  linkedPersonalHabitId: number | null;
+  minutesLogged: number;
+}
+
+export interface CompetitionHabitAnalyticsRow {
+  habitId: number;
+  name: string;
+  description: string | null;
+  category: string | null;
+  kind: CompetitionHabitKind;
+  scoringMode: CompetitionScoringMode;
+  pointsPositive: number;
+  pointsNegative: number;
+  minutesPerBlock: number | null;
+  pointsPerBlock: number | null;
+  dailyTargetMinutes: number | null;
+  positiveCount: number;
+  negativeCount: number;
+  completionRate: number;
+  netPoints: number;
+  totalMinutes: number;
+  participants: CompetitionHabitParticipantRow[];
+  timeline: Array<{
+    date: string;
+    positiveCount: number;
+    negativeCount: number;
+    clearCount: number;
+    netPoints: number;
+    minutesLogged: number;
+  }>;
+}
+
+export interface CompetitionParticipantHabitBreakdown {
+  habitId: number;
+  habitName: string;
+  kind: CompetitionHabitKind;
+  scoringMode: CompetitionScoringMode;
+  pointsPositive: number;
+  pointsNegative: number;
+  minutesPerBlock: number | null;
+  pointsPerBlock: number | null;
+  points: number;
+  positiveDays: number;
+  negativeDays: number;
+  completionRate: number;
+  currentStreak: number;
+  bestStreak: number;
+  totalMinutes: number;
+}
+
+export interface CompetitionParticipantAnalyticsRow extends CompetitionLeaderboardRow {
+  rank: number;
+  pointsDiffToLeader: number;
+  habitBreakdown: CompetitionParticipantHabitBreakdown[];
+  cumulativePoints: Array<{ date: string; value: number }>;
+}
+
+export interface CompetitionDashboardStats {
+  range: CompetitionRange;
+  summary: {
+    activeParticipants: number;
+    pendingParticipants: number;
+    habitCount: number;
+    totalPoints: number;
+    averageCompletionRate: number;
+    positiveCount: number;
+    negativeCount: number;
+    leaderUserId: number | null;
+    leaderName: string | null;
+    leaderUsername: string | null;
+    leaderPoints: number;
+  };
+  leaderboard: CompetitionLeaderboardRow[];
+  habits: CompetitionHabitAnalyticsRow[];
+  participants: CompetitionParticipantAnalyticsRow[];
+  timeline: CompetitionTimelineRow[];
+}
+
+export interface CompetitionHabitLogResult {
+  ok: boolean;
+  status: CompetitionLogStatus;
+  appliedToPersonal: boolean;
+  personalHabitId: number | null;
+  pointsDelta: number;
+  minutesLogged?: number;
+}
+
+export interface CreateCompetitionHabit {
+  name: string;
+  description?: string;
+  category?: string;
+  kind: CompetitionHabitKind;
+  scoringMode: CompetitionScoringMode;
+  pointsPositive: number;
+  pointsNegative: number;
+  minutesPerBlock?: number | null;
+  pointsPerBlock?: number | null;
+  dailyTargetMinutes?: number | null;
 }
 
 // ── Study ──
@@ -439,6 +916,30 @@ export interface ChatHistoryData {
   streak: number;
 }
 
+// ── Guide ──
+
+export interface GuideMessage {
+  id: number;
+  direction: 'in' | 'out';
+  content: string | null;
+  timestamp: string;
+}
+
+export interface GuideHistoryData {
+  messages: GuideMessage[];
+}
+
+// ── Calendar ──
+
+export interface CalendarEvent {
+  id?: string;
+  summary: string;
+  description?: string;
+  start: string;
+  end?: string;
+  allDay?: boolean;
+}
+
 // ── Check-in ──
 
 export interface CheckinTodayData {
@@ -451,9 +952,32 @@ export interface CheckinTodayData {
 
 export interface DayEntriesData {
   date: string;
+  canEdit: boolean;
+  editableWindowDays: number;
   entry: MetricEntry | null;
   messages: ChatMessage[];
-  habits: Array<{ id: number; name: string; emoji: string | null; completed: boolean }>;
+  habits: Array<{
+    id: number;
+    name: string;
+    emoji: string | null;
+    category?: string | null;
+    isNegative?: boolean;
+    status?: 'positive' | 'negative' | 'clear';
+    completed: boolean;
+  }>;
+  competitionHabits: Array<{
+    competitionId: number;
+    competitionName: string;
+    habitId: number;
+    name: string;
+    description: string | null;
+    category: string | null;
+    scoringMode: CompetitionScoringMode;
+    pointsPositive: number;
+    pointsNegative: number;
+    linkedPersonalHabitId: number | null;
+    status: CompetitionLogStatus;
+  }>;
   goals: GoalSummary[];
   studySessions: StudySession[];
 }

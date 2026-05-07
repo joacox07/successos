@@ -15,6 +15,7 @@ function ensureTables(db: InstanceType<typeof Database>) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       phone TEXT NOT NULL UNIQUE,
       name TEXT,
+      username TEXT UNIQUE,
       timezone TEXT DEFAULT 'America/Argentina/Buenos_Aires',
       onboarding_complete INTEGER DEFAULT 0,
       onboarding_step INTEGER DEFAULT 0,
@@ -181,6 +182,8 @@ function ensureTables(db: InstanceType<typeof Database>) {
       emoji TEXT,
       category TEXT,
       frequency TEXT DEFAULT 'daily',
+      is_negative INTEGER DEFAULT 0,
+      target_minutes INTEGER,
       active INTEGER DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -194,11 +197,85 @@ function ensureTables(db: InstanceType<typeof Database>) {
       user_id INTEGER NOT NULL REFERENCES users(id),
       date TEXT NOT NULL,
       completed INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'positive',
+      minutes_logged INTEGER DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS habit_logs_unique_idx ON habit_logs(habit_id, date);
     CREATE INDEX IF NOT EXISTS habit_logs_user_date_idx ON habit_logs(user_id, date);
+
+    CREATE TABLE IF NOT EXISTS habit_competitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      created_by_user_id INTEGER REFERENCES users(id),
+      created_by_mode TEXT NOT NULL DEFAULT 'user',
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS competition_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      competition_id INTEGER NOT NULL REFERENCES habit_competitions(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      role TEXT NOT NULL DEFAULT 'member',
+      invite_status TEXT NOT NULL DEFAULT 'pending',
+      joined_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS competition_participants_unique_idx ON competition_participants(competition_id, user_id);
+    CREATE INDEX IF NOT EXISTS competition_participants_competition_idx ON competition_participants(competition_id);
+    CREATE INDEX IF NOT EXISTS competition_participants_user_idx ON competition_participants(user_id);
+
+    CREATE TABLE IF NOT EXISTS competition_habits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      competition_id INTEGER NOT NULL REFERENCES habit_competitions(id),
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT,
+      kind TEXT NOT NULL DEFAULT 'event',
+      scoring_mode TEXT NOT NULL DEFAULT 'positive_only',
+      points_positive INTEGER NOT NULL DEFAULT 1,
+      points_negative INTEGER NOT NULL DEFAULT 0,
+      minutes_per_block INTEGER,
+      points_per_block INTEGER,
+      daily_target_minutes INTEGER,
+      active INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS competition_habits_competition_idx ON competition_habits(competition_id);
+
+    CREATE TABLE IF NOT EXISTS competition_habit_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      competition_habit_id INTEGER NOT NULL REFERENCES competition_habits(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      personal_habit_id INTEGER NOT NULL REFERENCES habits(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS competition_habit_links_unique_idx ON competition_habit_links(competition_habit_id, user_id);
+    CREATE INDEX IF NOT EXISTS competition_habit_links_habit_idx ON competition_habit_links(competition_habit_id);
+    CREATE INDEX IF NOT EXISTS competition_habit_links_user_idx ON competition_habit_links(user_id);
+
+    CREATE TABLE IF NOT EXISTS competition_habit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      competition_habit_id INTEGER NOT NULL REFERENCES competition_habits(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'positive',
+      minutes_logged INTEGER DEFAULT 0,
+      points_awarded INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS competition_habit_logs_unique_idx ON competition_habit_logs(competition_habit_id, user_id, date);
+    CREATE INDEX IF NOT EXISTS competition_habit_logs_habit_date_idx ON competition_habit_logs(competition_habit_id, date);
+    CREATE INDEX IF NOT EXISTS competition_habit_logs_user_date_idx ON competition_habit_logs(user_id, date);
 
     CREATE TABLE IF NOT EXISTS study_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,7 +334,51 @@ function ensureTables(db: InstanceType<typeof Database>) {
     );
 
     CREATE INDEX IF NOT EXISTS study_subjects_user_idx ON study_subjects(user_id);
+
+    CREATE TABLE IF NOT EXISTS calendar_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      access_token TEXT NOT NULL,
+      refresh_token TEXT,
+      expiry_date TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS calendar_tokens_user_idx ON calendar_tokens(user_id);
   `);
+
+  // Migrations: add columns that may be missing from older DBs
+  const migrations = [
+    "ALTER TABLE users ADD COLUMN email TEXT",
+    "ALTER TABLE users ADD COLUMN profile_complete INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN username TEXT",
+    "ALTER TABLE habits ADD COLUMN is_negative INTEGER DEFAULT 0",
+    "ALTER TABLE habits ADD COLUMN target_minutes INTEGER",
+    "ALTER TABLE habit_logs ADD COLUMN status TEXT DEFAULT 'positive'",
+    "ALTER TABLE habit_logs ADD COLUMN minutes_logged INTEGER DEFAULT 0",
+    "ALTER TABLE competition_habits ADD COLUMN kind TEXT NOT NULL DEFAULT 'event'",
+    "ALTER TABLE competition_habits ADD COLUMN minutes_per_block INTEGER",
+    "ALTER TABLE competition_habits ADD COLUMN points_per_block INTEGER",
+    "ALTER TABLE competition_habits ADD COLUMN daily_target_minutes INTEGER",
+    "ALTER TABLE competition_habit_logs ADD COLUMN minutes_logged INTEGER DEFAULT 0",
+    "ALTER TABLE competition_habit_logs ADD COLUMN points_awarded INTEGER DEFAULT 0",
+  ];
+  for (const sql of migrations) {
+    try { db.exec(sql); } catch { /* column already exists */ }
+  }
+
+  const postMigrations = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users(username)",
+    "UPDATE habit_logs SET status = CASE WHEN completed = 1 THEN 'positive' ELSE 'clear' END WHERE status IS NULL",
+    "UPDATE habit_logs SET minutes_logged = 0 WHERE minutes_logged IS NULL",
+    "UPDATE competition_habits SET kind = 'event' WHERE kind IS NULL OR trim(kind) = ''",
+    "UPDATE competition_habit_logs SET minutes_logged = 0 WHERE minutes_logged IS NULL",
+    "UPDATE competition_habit_logs SET points_awarded = 0 WHERE points_awarded IS NULL",
+  ];
+  for (const sql of postMigrations) {
+    try { db.exec(sql); } catch { /* ignore */ }
+  }
 }
 
 export function getDb() {
