@@ -275,9 +275,18 @@ function isAvoidanceScoring(mode: CompetitionScoringMode) {
   return mode === 'negative_only' || mode === 'both';
 }
 
-function effectiveEventStatus(habit: Pick<CompetitionHabitRow, 'kind' | 'scoringMode'>, status: CompetitionLogStatus): CompetitionLogStatus {
+function effectiveEventStatus(
+  habit: Pick<CompetitionHabitRow, 'kind' | 'scoringMode'>,
+  status: CompetitionLogStatus,
+  date?: string,
+): CompetitionLogStatus {
   if (habit.kind !== 'event') return status;
-  if (status === 'clear' && isAvoidanceScoring(habit.scoringMode)) return 'positive';
+  if (status === 'clear' && isAvoidanceScoring(habit.scoringMode)) {
+    if (!date) return status;
+    const today = parseDateUTC(getTodayDate());
+    const target = parseDateUTC(date);
+    if (target.getTime() < today.getTime()) return 'positive';
+  }
   return status;
 }
 
@@ -830,7 +839,7 @@ function getTodayProgressForHabit(competitionHabit: CompetitionHabitRow, partici
       `SELECT status, completed, minutes_logged as minutesLogged
        FROM habit_logs WHERE habit_id = ? AND user_id = ? AND date = ? LIMIT 1`
     ).get(link.personalHabitId, participantUserId, date) as { status?: string | null; completed?: number | null; minutesLogged?: number | null } | undefined;
-    const status = effectiveEventStatus(competitionHabit, statusFromPersonalRow(row));
+    const status = effectiveEventStatus(competitionHabit, statusFromPersonalRow(row), date);
     const minutesLogged = Math.max(0, row?.minutesLogged ?? 0);
     return {
       status,
@@ -846,7 +855,7 @@ function getTodayProgressForHabit(competitionHabit: CompetitionHabitRow, partici
   ).get(competitionHabit.id, participantUserId, date) as
     | { status?: string; minutesLogged?: number | null; pointsAwarded?: number | null }
     | undefined;
-  const status = effectiveEventStatus(competitionHabit, (row?.status as CompetitionLogStatus | undefined) ?? 'clear');
+  const status = effectiveEventStatus(competitionHabit, (row?.status as CompetitionLogStatus | undefined) ?? 'clear', date);
   const minutesLogged = Math.max(0, row?.minutesLogged ?? 0);
   return {
     status,
@@ -1067,7 +1076,7 @@ function buildDashboardData(competitionId: number, range: CompetitionRange) {
     const raw = logMap.get(`${habit.id}:${userId}:${date}`) ?? { date, status: 'clear' as CompetitionLogStatus, minutesLogged: 0 };
     return {
       ...raw,
-      status: habit.kind === 'duration' ? raw.status : effectiveEventStatus(habit, raw.status),
+      status: habit.kind === 'duration' ? raw.status : effectiveEventStatus(habit, raw.status, date),
     };
   };
 
@@ -1772,7 +1781,7 @@ export function recomputeLinkedCompetitionForDay(input: {
       ).get(personalHabitId, input.userId, input.date) as { status?: string | null; completed?: number | null } | undefined;
       const rawStatus = statusFromPersonalRow(personalRow);
       setCompetitionHabitStatus(link.competitionHabitId, input.userId, input.date, rawStatus);
-      const effective = effectiveEventStatus({ kind: 'event', scoringMode: link.scoringMode } as any, rawStatus);
+      const effective = effectiveEventStatus({ kind: 'event', scoringMode: link.scoringMode } as any, rawStatus, input.date);
       const points = pointsForEvent(link.scoringMode, link.pointsPositive, link.pointsNegative, effective);
       if (rawStatus !== 'clear') {
         sqlite.prepare(
