@@ -24,13 +24,7 @@ import HabitWidgetPage from '@/pages/HabitWidgetPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { AdminPage } from '@/pages/AdminPage';
 import { SetupPage } from '@/pages/SetupPage';
-
-function toISODate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+import { getDefaultCheckinTargetDate, toISODate } from '@/lib/utils';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
@@ -62,13 +56,7 @@ function AppShell() {
   const [checkinMode, setCheckinMode] = useState<'chat' | 'wizard'>('chat');
   const { data: profileData } = useApi(() => api.getProfile());
 
-  const quickTargetDate = (() => {
-    const base = new Date();
-    if (profileData?.defaultCheckinDayMode === 'previous_day') {
-      base.setDate(base.getDate() - 1);
-    }
-    return toISODate(base);
-  })();
+  const quickTargetDate = toISODate(getDefaultCheckinTargetDate(profileData?.defaultCheckinDayMode ?? 'today'));
   const checkinTargetLabel = profileData?.defaultCheckinDayMode === 'previous_day' ? 'ayer' : 'hoy';
 
   const handleCheckinComplete = () => {

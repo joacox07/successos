@@ -130,6 +130,12 @@ function isStrongContextSwitch(text: string): boolean {
   return false;
 }
 
+function isOperatorCalendarCommand(text: string): boolean {
+  const normalized = normalizeText(text);
+  if (!normalized) return false;
+  return /\b(agenda|agendame|agendar|programa|evento|reunion|reunir)\b/.test(normalized);
+}
+
 const HELP_MESSAGE = `*SuccessOS - Comandos*
 
 PodÃ©s escribirme lo que sea naturalmente (texto o audio) y yo extraigo los datos. AdemÃ¡s:
@@ -307,6 +313,30 @@ export async function processMessage(
       return { response, type: 'recalibration' };
     } catch (err) {
       logger.error({ err }, 'Recalibration failed');
+    }
+  }
+
+  if (isOperatorCalendarCommand(text)) {
+    try {
+      const { handleOperatorMessage } = await import('./assistantOperator.js');
+      const operator = await handleOperatorMessage(userId, text, tz);
+      if (operator.handled) {
+        if (operator.response) {
+          await logMessage({
+            userId,
+            direction: 'out',
+            contentType: 'text',
+            rawContent: operator.response,
+            extractedData: operator.executedActions as any,
+          });
+        }
+        return {
+          response: operator.response,
+          type: 'calendar',
+        };
+      }
+    } catch (err) {
+      logger.error({ err }, 'Operator calendar handling failed');
     }
   }
 

@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+export type CheckinDefaultDayMode = 'today' | 'previous_day';
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -13,6 +15,29 @@ export function formatDate(dateStr: string): string {
 export function formatDateFull(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+export function toISODate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function dateFromISO(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function getDefaultCheckinTargetDate(
+  mode: CheckinDefaultDayMode = 'today',
+  now: Date = new Date(),
+): Date {
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (mode === 'previous_day') {
+    base.setDate(base.getDate() - 1);
+  }
+  return base;
 }
 
 export function categoryEmoji(category: string): string {

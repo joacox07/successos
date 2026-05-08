@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ResponsiveContainer,
@@ -91,14 +91,26 @@ function CollapsibleCard({
   );
 }
 
-function KpiCard({ label, value, helper, tone = 'default' }: { label: string; value: string; helper: string; tone?: 'default' | 'mint' | 'coral' }) {
+function KpiCard({
+  label,
+  value,
+  helper,
+  tone = 'default',
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  tone?: 'default' | 'mint' | 'coral';
+  compact?: boolean;
+}) {
   const toneClass = tone === 'mint' ? 'text-accent-mint' : tone === 'coral' ? 'text-accent-coral' : 'text-text-primary';
   return (
-    <Card className="bg-white/[0.03]">
-      <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-text-muted">{label}</p>
-        <p className={cn('text-3xl font-bold tracking-tight', toneClass)}>{value}</p>
-        <p className="text-xs text-text-secondary">{helper}</p>
+    <Card className={cn('bg-white/[0.03]', compact && 'p-3 md:p-5')}>
+      <div className={cn('space-y-2', compact && 'flex h-full min-h-[132px] flex-col justify-between md:block md:min-h-0')}>
+        <p className={cn('text-[11px] uppercase tracking-[0.18em] text-text-muted', compact && 'text-[10px] leading-tight')}>{label}</p>
+        <p className={cn('font-bold tracking-tight', toneClass, compact ? 'text-3xl leading-none' : 'text-3xl')}>{value}</p>
+        <p className={cn('text-xs text-text-secondary', compact && 'hidden md:block')}>{helper}</p>
       </div>
     </Card>
   );
@@ -115,7 +127,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 
 function RangeTabs({ value, onChange }: { value: CompetitionRange; onChange: (range: CompetitionRange) => void }) {
   return (
-    <div className="inline-flex rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1">
+    <div className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
       {([
         ['week', 'Semana'],
         ['month', 'Mes'],
@@ -125,7 +137,7 @@ function RangeTabs({ value, onChange }: { value: CompetitionRange; onChange: (ra
           key={range}
           onClick={() => onChange(range)}
           className={cn(
-            'rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors',
+            'rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors',
             value === range ? 'bg-accent-mint/15 text-accent-mint' : 'text-text-muted hover:text-text-primary',
           )}
         >
@@ -137,26 +149,32 @@ function RangeTabs({ value, onChange }: { value: CompetitionRange; onChange: (ra
 }
 
 function ViewTabs({ value, onChange }: { value: CompetitionView; onChange: (view: CompetitionView) => void }) {
-  const options: Array<[CompetitionView, string]> = [
-    ['summary', 'Resumen'],
-    ['habit', 'Por hábito'],
-    ['rival', 'Rivales'],
+  const options: Array<{ id: CompetitionView; label: string; helper: string; icon: 'star' | 'target' | 'users' }> = [
+    { id: 'summary', label: 'Resumen', helper: 'Estado general', icon: 'star' },
+    { id: 'habit', label: 'Por hábito', helper: 'Detalle puntual', icon: 'target' },
+    { id: 'rival', label: 'Rivales', helper: 'Duelo directo', icon: 'users' },
   ];
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map(([id, label]) => (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {options.map(({ id, label, helper, icon }) => (
         <button
           key={id}
           onClick={() => onChange(id)}
           className={cn(
-            'rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors',
+            'rounded-2xl border px-3 py-3 text-left transition-colors',
             value === id
-              ? 'border-accent-mint/30 bg-accent-mint/10 text-accent-mint'
-              : 'border-white/[0.08] bg-white/[0.03] text-text-muted hover:text-text-primary',
+              ? 'border-accent-amber/35 bg-accent-amber/15 text-accent-amber shadow-[0_0_0_1px_rgba(255,176,0,0.15)]'
+              : 'border-white/[0.08] bg-white/[0.03] text-text-muted hover:border-white/[0.14] hover:text-text-primary',
           )}
         >
-          {label}
+          <div className="flex items-start gap-2">
+            <Icon name={icon} size={14} className={cn('mt-0.5', value === id ? 'text-accent-amber' : 'text-text-muted')} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em]">{label}</p>
+              <p className={cn('mt-1 text-[11px]', value === id ? 'text-accent-amber/90' : 'text-text-secondary')}>{helper}</p>
+            </div>
+          </div>
         </button>
       ))}
     </div>
@@ -166,26 +184,26 @@ function ViewTabs({ value, onChange }: { value: CompetitionView; onChange: (view
 function scoringModeLabel(mode: CompetitionScoringMode) {
   switch (mode) {
     case 'negative_only':
-      return 'Solo resta por recaída';
+      return 'Solo resta por recaÃ­da';
     case 'both':
-      return 'Suma por éxito y resta por recaída';
+      return 'Suma por Ã©xito y resta por recaÃ­da';
     default:
-      return 'Solo suma por éxito';
+      return 'Solo suma por Ã©xito';
   }
 }
 
 function statusLabel(habit: CompetitionHabit) {
   if (habit.kind === 'duration') {
     if ((habit.todayMinutes ?? 0) > 0) {
-      return `Hoy: ${habit.todayMinutes} min · ${habit.todayPoints ?? 0} pts`;
+      return `Hoy: ${habit.todayMinutes} min Â· ${habit.todayPoints ?? 0} pts`;
     }
     return 'Hoy: sin minutos';
   }
   switch (habit.todayStatus) {
     case 'positive':
-      return 'Hoy: éxito';
+      return 'Hoy: Ã©xito';
     case 'negative':
-      return 'Hoy: recaída';
+      return 'Hoy: recaÃ­da';
     default:
       return 'Hoy: sin registrar';
   }
@@ -201,7 +219,7 @@ function canLogNegative(habit: CompetitionHabit) {
 
 function durationConfigLabel(habit: CompetitionHabit) {
   if (habit.kind !== 'duration') return scoringModeLabel(habit.scoringMode);
-  const target = habit.dailyTargetMinutes ? ` · meta ${habit.dailyTargetMinutes} min` : '';
+  const target = habit.dailyTargetMinutes ? ` Â· meta ${habit.dailyTargetMinutes} min` : '';
   return `${habit.minutesPerBlock ?? 30} min = ${habit.pointsPerBlock ?? 1} pt${target}`;
 }
 
@@ -214,7 +232,7 @@ function toISODate(date: Date) {
 }
 
 function retroDateOptions() {
-  const labels = ['Hoy', 'Ayer', 'Hace 2 días', 'Hace 3 días'];
+  const labels = ['Hoy', 'Ayer', 'Hace 2 dÃ­as', 'Hace 3 dÃ­as'];
   return labels.map((label, index) => {
     const date = new Date();
     date.setDate(date.getDate() - index);
@@ -382,8 +400,8 @@ export default function CompetitionsPage() {
     return selectedHabit.participants.map((participant) => ({
       name: participant.username ? `@${participant.username}` : participant.name,
       Puntos: participant.points,
-      'Éxitos': participant.positiveDays,
-      'Recaídas': participant.negativeDays,
+      'Ã‰xitos': participant.positiveDays,
+      'RecaÃ­das': participant.negativeDays,
       Cumplimiento: participant.completionRate,
     }));
   }, [selectedHabit]);
@@ -435,7 +453,7 @@ export default function CompetitionsPage() {
 
   async function handleDeleteCompetition() {
     if (!selectedCompetitionId) return;
-    if (!window.confirm('Se va a borrar la competencia completa con sus hábitos, invitaciones y logs.')) return;
+    if (!window.confirm('Se va a borrar la competencia completa con sus hÃ¡bitos, invitaciones y logs.')) return;
     setBusyKey('delete-competition');
     setErrorMessage(null);
     try {
@@ -474,7 +492,7 @@ export default function CompetitionsPage() {
       if (action === 'accepted') setSelectedCompetitionId(competitionId);
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo responder la invitación.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo responder la invitaciÃ³n.');
     } finally {
       setBusyKey(null);
     }
@@ -507,7 +525,7 @@ export default function CompetitionsPage() {
       setDailyTargetMinutes('');
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo crear el hábito compartido.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo crear el hÃ¡bito compartido.');
     } finally {
       setBusyKey(null);
     }
@@ -522,7 +540,7 @@ export default function CompetitionsPage() {
       await api.linkCompetitionHabitExisting(selectedCompetitionId, habitId, Number(personalHabitId));
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo vincular el hábito.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo vincular el hÃ¡bito.');
     } finally {
       setBusyKey(null);
     }
@@ -536,7 +554,7 @@ export default function CompetitionsPage() {
       await api.createAndLinkCompetitionHabit(selectedCompetitionId, habitId);
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo crear y vincular el hábito.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo crear y vincular el hÃ¡bito.');
     } finally {
       setBusyKey(null);
     }
@@ -557,7 +575,7 @@ export default function CompetitionsPage() {
       }
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudieron pasar todos los hábitos al tracker personal.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudieron pasar todos los hÃ¡bitos al tracker personal.');
     } finally {
       setBusyKey(null);
     }
@@ -585,7 +603,7 @@ export default function CompetitionsPage() {
       await api.unlinkCompetitionHabit(selectedCompetitionId, habitId);
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo desvincular el hábito.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo desvincular el hÃ¡bito.');
     } finally {
       setBusyKey(null);
     }
@@ -610,7 +628,7 @@ export default function CompetitionsPage() {
     const rawValue = durationInputs[habitId] ?? '';
     const minutes = Number(rawValue);
     if (!Number.isFinite(minutes) || minutes <= 0) {
-      setErrorMessage('Ingresá una cantidad válida de minutos.');
+      setErrorMessage('IngresÃ¡ una cantidad vÃ¡lida de minutos.');
       return;
     }
     setBusyKey(`log-duration-${habitId}`);
@@ -658,7 +676,7 @@ export default function CompetitionsPage() {
       setEditingHabitId(null);
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo actualizar el hábito compartido.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo actualizar el hÃ¡bito compartido.');
     } finally {
       setBusyKey(null);
     }
@@ -666,7 +684,7 @@ export default function CompetitionsPage() {
 
   async function handleDeleteHabit(habitId: number) {
     if (!selectedCompetitionId) return;
-    if (!window.confirm('Se va a borrar este hábito compartido y sus registros competitivos.')) return;
+    if (!window.confirm('Se va a borrar este hÃ¡bito compartido y sus registros competitivos.')) return;
     setBusyKey(`delete-habit-${habitId}`);
     setErrorMessage(null);
     try {
@@ -675,7 +693,7 @@ export default function CompetitionsPage() {
       if (editingHabitId === habitId) setEditingHabitId(null);
       setRefreshToken((current) => current + 1);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'No se pudo eliminar el hábito compartido.');
+      setErrorMessage(err instanceof Error ? err.message : 'No se pudo eliminar el hÃ¡bito compartido.');
     } finally {
       setBusyKey(null);
     }
@@ -691,15 +709,15 @@ export default function CompetitionsPage() {
       <div className="space-y-2">
         {habit.linkedPersonalHabitId ? (
           <div className="rounded-2xl border border-accent-mint/15 bg-accent-mint/[0.08] px-3 py-3 text-xs text-accent-mint">
-            Sincronizado con tu hábito personal.
+            Sincronizado con tu hÃ¡bito personal.
           </div>
         ) : isSuggested ? (
           <div className="rounded-2xl border border-accent-amber/15 bg-accent-amber/[0.08] px-3 py-3 text-xs text-accent-amber">
-            Encontré un hábito parecido: <span className="font-semibold">{habit.suggestedPersonalHabitName}</span>
+            EncontrÃ© un hÃ¡bito parecido: <span className="font-semibold">{habit.suggestedPersonalHabitName}</span>
           </div>
         ) : (
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3 py-3 text-xs text-text-secondary">
-            Todavía no está sincronizado con tu tracker personal.
+            TodavÃ­a no estÃ¡ sincronizado con tu tracker personal.
           </div>
         )}
         <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -754,15 +772,15 @@ export default function CompetitionsPage() {
     if (!competitionStats) return null;
     return (
       <div className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-4">
-          <KpiCard label="Puntos totales" value={`${competitionStats.summary.totalPoints}`} helper="Suma neta del período actual." />
-          <KpiCard label="Cumplimiento" value={`${competitionStats.summary.averageCompletionRate}%`} helper="Promedio de éxitos sobre eventos posibles." tone="mint" />
-          <KpiCard label="Éxitos" value={`${competitionStats.summary.positiveCount}`} helper="Cantidad total de éxitos registrados." tone="mint" />
-          <KpiCard label="Recaídas" value={`${competitionStats.summary.negativeCount}`} helper="Cantidad total de recaídas registradas." tone="coral" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <KpiCard label="Puntos totales" value={`${competitionStats.summary.totalPoints}`} helper="Suma neta del perÃ­odo actual." compact />
+          <KpiCard label="Cumplimiento" value={`${competitionStats.summary.averageCompletionRate}%`} helper="Promedio de Ã©xitos sobre eventos posibles." tone="mint" compact />
+          <KpiCard label="Ã‰xitos" value={`${competitionStats.summary.positiveCount}`} helper="Cantidad total de Ã©xitos registrados." tone="mint" compact />
+          <KpiCard label="RecaÃ­das" value={`${competitionStats.summary.negativeCount}`} helper="Cantidad total de recaÃ­das registradas." tone="coral" compact />
         </div>
 
         <Card>
-          <SectionTitle title="Evolución" subtitle="Puntos acumulados por participante." />
+          <SectionTitle title="EvoluciÃ³n" subtitle="Puntos acumulados por participante." />
           <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartSeries}>
@@ -789,7 +807,7 @@ export default function CompetitionsPage() {
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <Card>
-            <SectionTitle title="Leaderboard" subtitle="Lectura rápida del período filtrado." />
+            <SectionTitle title="Leaderboard" subtitle="Lectura rÃ¡pida del perÃ­odo filtrado." />
             <div className="mt-4 space-y-3">
               {competitionStats.leaderboard.map((row, index) => (
                 <div key={row.userId} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3">
@@ -799,7 +817,7 @@ export default function CompetitionsPage() {
                         #{index + 1} {row.username ? `@${row.username}` : row.name}
                       </p>
                       <p className="text-xs text-text-secondary">
-                        Racha actual {row.currentStreak} · Mejor racha {row.bestStreak}
+                        Racha actual {row.currentStreak} Â· Mejor racha {row.bestStreak}
                       </p>
                     </div>
                     <div className="text-right">
@@ -809,10 +827,10 @@ export default function CompetitionsPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                     <div className="rounded-xl bg-accent-mint/[0.08] px-3 py-2 text-accent-mint">
-                      Éxitos: {row.positiveDays}
+                      Ã‰xitos: {row.positiveDays}
                     </div>
                     <div className="rounded-xl bg-accent-coral/[0.08] px-3 py-2 text-accent-coral">
-                      Recaídas: {row.negativeDays}
+                      RecaÃ­das: {row.negativeDays}
                     </div>
                     <div className="rounded-xl bg-white/[0.04] px-3 py-2 text-text-secondary">
                       Cumplimiento: {row.completionRate}%
@@ -824,7 +842,7 @@ export default function CompetitionsPage() {
           </Card>
 
           <Card>
-            <SectionTitle title="Timeline" subtitle="Qué tan movida viene la competencia día por día." />
+            <SectionTitle title="Timeline" subtitle="QuÃ© tan movida viene la competencia dÃ­a por dÃ­a." />
             <div className="mt-4 space-y-2">
               {competitionStats.timeline.slice(-10).reverse().map((day) => (
                 <div key={day.date} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3">
@@ -835,8 +853,8 @@ export default function CompetitionsPage() {
                     </p>
                   </div>
                   <div className="mt-2 flex gap-2 text-[11px] text-text-secondary">
-                    <span>Éxitos {day.positiveCount}</span>
-                    <span>Recaídas {day.negativeCount}</span>
+                    <span>Ã‰xitos {day.positiveCount}</span>
+                    <span>RecaÃ­das {day.negativeCount}</span>
                     <span>Sin registro {day.clearCount}</span>
                   </div>
                 </div>
@@ -875,9 +893,9 @@ export default function CompetitionsPage() {
             <SectionTitle title={selectedHabit.name} subtitle={selectedHabit.description || scoringModeLabel(selectedHabit.scoringMode)} />
             <div className="mt-4 grid gap-3 md:grid-cols-4">
               <KpiCard label="Modo" value={selectedHabit.scoringMode === 'both' ? 'Mixto' : selectedHabit.scoringMode === 'negative_only' ? 'Negativo' : 'Positivo'} helper={scoringModeLabel(selectedHabit.scoringMode)} />
-              <KpiCard label="Puntos por éxito" value={`${selectedHabit.pointsPositive}`} helper="Puntos sumados por cada éxito." tone="mint" />
-              <KpiCard label="Puntos por recaída" value={`${selectedHabit.pointsNegative}`} helper="Puntos descontados por cada recaída." tone="coral" />
-              <KpiCard label="Cumplimiento" value={`${selectedHabit.completionRate}%`} helper="Éxitos de este hábito sobre el total esperado." />
+              <KpiCard label="Puntos por Ã©xito" value={`${selectedHabit.pointsPositive}`} helper="Puntos sumados por cada Ã©xito." tone="mint" />
+              <KpiCard label="Puntos por recaÃ­da" value={`${selectedHabit.pointsNegative}`} helper="Puntos descontados por cada recaÃ­da." tone="coral" />
+              <KpiCard label="Cumplimiento" value={`${selectedHabit.completionRate}%`} helper="Ã‰xitos de este hÃ¡bito sobre el total esperado." />
             </div>
             <div className="mt-5 h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -888,15 +906,15 @@ export default function CompetitionsPage() {
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Bar dataKey="Puntos" fill="#54d2b1" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="Éxitos" fill="#6ec3ff" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="Recaídas" fill="#f97360" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="Ã‰xitos" fill="#6ec3ff" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="RecaÃ­das" fill="#f97360" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
           <Card className="space-y-4">
-            <SectionTitle title="Registro y vínculo" subtitle="Unificá este hábito con tu tracker personal si te sirve." />
+            <SectionTitle title="Registro y vÃ­nculo" subtitle="UnificÃ¡ este hÃ¡bito con tu tracker personal si te sirve." />
             {habitDetail ? (
               <>
                 <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3">
@@ -910,7 +928,7 @@ export default function CompetitionsPage() {
                     disabled={busyKey === `log-${habitDetail.id}-positive`}
                     className="rounded-xl bg-accent-mint/15 px-3 py-2 text-xs text-accent-mint"
                   >
-                    Éxito
+                    Ã‰xito
                   </button>
                   {canLogNegative(habitDetail) ? (
                     <button
@@ -918,7 +936,7 @@ export default function CompetitionsPage() {
                       disabled={busyKey === `log-${habitDetail.id}-negative`}
                       className="rounded-xl bg-accent-coral/15 px-3 py-2 text-xs text-accent-coral"
                     >
-                      Recaída
+                      RecaÃ­da
                     </button>
                   ) : null}
                   <button
@@ -932,7 +950,7 @@ export default function CompetitionsPage() {
                 {renderLinkControls(habitDetail, competitionDetail.personalHabits)}
               </>
             ) : (
-              <EmptyState title="Hábito no disponible" body="No pude cargar el detalle editable de este hábito." />
+              <EmptyState title="HÃ¡bito no disponible" body="No pude cargar el detalle editable de este hÃ¡bito." />
             )}
           </Card>
         </div>
@@ -942,7 +960,7 @@ export default function CompetitionsPage() {
 
   function renderRivalView() {
     if (!competitionStats || participants.length < 2) {
-      return <EmptyState title="Faltan rivales" body="Necesitás al menos dos participantes activos para comparar cara a cara." />;
+      return <EmptyState title="Faltan rivales" body="NecesitÃ¡s al menos dos participantes activos para comparar cara a cara." />;
     }
     const [left, right] = rivalRows;
     if (!left || !right) return null;
@@ -974,14 +992,14 @@ export default function CompetitionsPage() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-4">
-          <KpiCard label={participantLabel(left.name, left.username, left.userId)} value={`${left.points}`} helper={`Cumplimiento ${left.completionRate}% · Racha ${left.currentStreak}`} />
-          <KpiCard label={participantLabel(right.name, right.username, right.userId)} value={`${right.points}`} helper={`Cumplimiento ${right.completionRate}% · Racha ${right.currentStreak}`} />
-          <KpiCard label="Diferencia" value={formatSigned(left.points - right.points)} helper="Puntos que separan a ambos en este período." tone={left.points >= right.points ? 'mint' : 'coral'} />
-          <KpiCard label="Hábitos comparados" value={`${rivalComparisonSeries.length}`} helper="Cantidad de hábitos compartidos incluidos en el duelo." />
+          <KpiCard label={participantLabel(left.name, left.username, left.userId)} value={`${left.points}`} helper={`Cumplimiento ${left.completionRate}% Â· Racha ${left.currentStreak}`} />
+          <KpiCard label={participantLabel(right.name, right.username, right.userId)} value={`${right.points}`} helper={`Cumplimiento ${right.completionRate}% Â· Racha ${right.currentStreak}`} />
+          <KpiCard label="Diferencia" value={formatSigned(left.points - right.points)} helper="Puntos que separan a ambos en este perÃ­odo." tone={left.points >= right.points ? 'mint' : 'coral'} />
+          <KpiCard label="HÃ¡bitos comparados" value={`${rivalComparisonSeries.length}`} helper="Cantidad de hÃ¡bitos compartidos incluidos en el duelo." />
         </div>
 
         <Card>
-          <SectionTitle title="Dónde gana cada uno" subtitle="Comparación de puntos por hábito." />
+          <SectionTitle title="DÃ³nde gana cada uno" subtitle="ComparaciÃ³n de puntos por hÃ¡bito." />
           <div className="mt-4 h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rivalComparisonSeries}>
@@ -1007,12 +1025,12 @@ export default function CompetitionsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">Competencias</h1>
             <p className="mt-1 max-w-3xl text-sm text-text-secondary">
-              Compará hábitos compartidos, entendé quién viene mejor y evitá tener que registrar dos veces cuando el hábito también vive en tu tracker personal.
+              ComparÃ¡ hÃ¡bitos compartidos, entendÃ© quiÃ©n viene mejor y evitÃ¡ tener que registrar dos veces cuando el hÃ¡bito tambiÃ©n vive en tu tracker personal.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs uppercase tracking-[0.18em] text-text-muted">
             <Icon name="crown" size={14} className="text-accent-mint" />
-            {competitionStats?.summary.leaderUsername ? `Líder: @${competitionStats.summary.leaderUsername}` : 'Sin líder aún'}
+            {competitionStats?.summary.leaderUsername ? `LÃ­der: @${competitionStats.summary.leaderUsername}` : 'Sin lÃ­der aÃºn'}
           </div>
         </div>
 
@@ -1025,7 +1043,7 @@ export default function CompetitionsPage() {
         <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
           <div className="space-y-6">
             <Card className="space-y-4">
-              <SectionTitle title="Crear competencia" subtitle="Podés usarla para un duelo 1 vs 1 o para un grupo." />
+              <SectionTitle title="Crear competencia" subtitle="PodÃ©s usarla para un duelo 1 vs 1 o para un grupo." />
               <label className="block space-y-2">
                 <span className="text-xs font-semibold text-text-secondary">Nombre</span>
                 <input
@@ -1045,16 +1063,16 @@ export default function CompetitionsPage() {
             </Card>
 
             <Card className="space-y-4">
-              <SectionTitle title="Invitaciones" subtitle="Aceptá o rechazá competencias que te mandaron." />
+              <SectionTitle title="Invitaciones" subtitle="AceptÃ¡ o rechazÃ¡ competencias que te mandaron." />
               {(invitesQuery.data?.invites ?? []).length === 0 ? (
-                <EmptyState title="Sin invitaciones pendientes" body="Cuando alguien te invite a competir, te va a aparecer acá." />
+                <EmptyState title="Sin invitaciones pendientes" body="Cuando alguien te invite a competir, te va a aparecer acÃ¡." />
               ) : (
                 <div className="space-y-3">
                   {(invitesQuery.data?.invites ?? []).map((invite) => (
                     <div key={invite.competitionId} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3">
                       <p className="text-sm font-semibold text-text-primary">{invite.name}</p>
                       <p className="mt-1 text-xs text-text-secondary">
-                        Invitó {invite.ownerUsername ? `@${invite.ownerUsername}` : invite.ownerName || 'otro usuario'}
+                        InvitÃ³ {invite.ownerUsername ? `@${invite.ownerUsername}` : invite.ownerName || 'otro usuario'}
                       </p>
                       <div className="mt-3 flex gap-2">
                         <button
@@ -1079,9 +1097,9 @@ export default function CompetitionsPage() {
             </Card>
 
             <Card className="space-y-4">
-              <SectionTitle title="Mis competencias" subtitle="Elegí una para abrir el dashboard." />
+              <SectionTitle title="Mis competencias" subtitle="ElegÃ­ una para abrir el dashboard." />
               {competitions.length === 0 ? (
-                <EmptyState title="Todavía no hay competencias" body="Creá la primera para empezar a comparar hábitos." />
+                <EmptyState title="TodavÃ­a no hay competencias" body="CreÃ¡ la primera para empezar a comparar hÃ¡bitos." />
               ) : (
                 <div className="space-y-3">
                   {competitions.map((competition) => (
@@ -1098,7 +1116,7 @@ export default function CompetitionsPage() {
                       <p className="text-sm font-semibold text-text-primary">{competition.name}</p>
                       <p className="mt-1 text-xs text-text-secondary">
                         {competition.acceptedCount}/{competition.participantCount} activos
-                        {competition.pendingCount > 0 ? ` · ${competition.pendingCount} pendientes` : ''}
+                        {competition.pendingCount > 0 ? ` Â· ${competition.pendingCount} pendientes` : ''}
                       </p>
                     </button>
                   ))}
@@ -1109,49 +1127,53 @@ export default function CompetitionsPage() {
 
           <div className="space-y-6">
             {!selectedCompetitionId || !competitionDetail ? (
-              <EmptyState title="Seleccioná una competencia" body="Cuando elijas una, vas a ver participantes, hábitos, evolución y comparación por rival." />
+              <EmptyState title="SeleccionÃ¡ una competencia" body="Cuando elijas una, vas a ver participantes, hÃ¡bitos, evoluciÃ³n y comparaciÃ³n por rival." />
             ) : (
-              <>
-                <Card className="space-y-5">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold text-text-primary">{competitionDetail.competition.name}</h2>
-                      <p className="mt-1 text-sm text-text-secondary">
-                        {competitionStats?.summary.activeParticipants ?? 0} participantes activos · {competitionStats?.summary.habitCount ?? 0} hábitos compartidos
-                      </p>
+              <>`r`n                <Card className="space-y-4">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-text-primary">{competitionDetail.competition.name}</h2>
+                        <p className="mt-1 text-sm text-text-secondary">
+                          {competitionStats?.summary.activeParticipants ?? 0} participantes activos · {competitionStats?.summary.habitCount ?? 0} hábitos compartidos
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">Período</span>
+                        <RangeTabs value={range} onChange={setRange} />
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <RangeTabs value={range} onChange={setRange} />
-                      <ViewTabs value={view} onChange={setView} />
-                    </div>
+                    <ViewTabs value={view} onChange={setView} />
                   </div>
 
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
-                    <input
-                      value={competitionEditName}
-                      onChange={(event) => setCompetitionEditName(event.target.value)}
-                      placeholder="Renombrar competencia"
-                      className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-3 text-sm text-text-primary outline-none"
-                    />
-                    <button
-                      onClick={handleRenameCompetition}
-                      disabled={!competitionEditName.trim() || busyKey === 'rename-competition'}
-                      className="rounded-2xl bg-accent-mint/15 px-4 py-3 text-sm font-semibold text-accent-mint disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Guardar nombre
-                    </button>
-                    <button
-                      onClick={handleDeleteCompetition}
-                      disabled={busyKey === 'delete-competition'}
-                      className="rounded-2xl border border-accent-coral/20 bg-accent-coral/10 px-4 py-3 text-sm font-semibold text-accent-coral disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Borrar competencia
-                    </button>
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
+                    <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <input
+                        value={competitionEditName}
+                        onChange={(event) => setCompetitionEditName(event.target.value)}
+                        placeholder="Renombrar competencia"
+                        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-text-primary outline-none"
+                      />
+                      <button
+                        onClick={handleRenameCompetition}
+                        disabled={!competitionEditName.trim() || busyKey === 'rename-competition'}
+                        className="rounded-xl bg-accent-mint/15 px-4 py-2.5 text-sm font-semibold text-accent-mint disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Guardar nombre
+                      </button>
+                      <button
+                        onClick={handleDeleteCompetition}
+                        disabled={busyKey === 'delete-competition'}
+                        className="rounded-xl border border-accent-coral/20 bg-accent-coral/10 px-4 py-2.5 text-sm font-semibold text-accent-coral disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Borrar competencia
+                      </button>
+                    </div>
                   </div>
 
                   <CollapsibleCard
                     title="Invitar rival"
-                    subtitle="Buscá por @username y validá antes de mandar la invitación."
+                    subtitle="BuscÃ¡ por @username y validÃ¡ antes de mandar la invitaciÃ³n."
                     open={inviteSectionOpen}
                     onToggle={() => setInviteSectionOpen((current) => !current)}
                   >
@@ -1217,7 +1239,7 @@ export default function CompetitionsPage() {
                     </Card>
 
                     <Card className="space-y-4 bg-white/[0.02]">
-                      <SectionTitle title="Participantes" subtitle="Separados por estado para que sea claro quién ya está jugando." />
+                      <SectionTitle title="Participantes" subtitle="Separados por estado para que sea claro quiÃ©n ya estÃ¡ jugando." />
                       <div className="space-y-3">
                         {['accepted', 'pending', 'declined'].map((status) => {
                           const rows = competitionDetail.participants.filter((participant) => participant.inviteStatus === status);
@@ -1247,8 +1269,8 @@ export default function CompetitionsPage() {
                 {view === 'rival' ? renderRivalView() : null}
 
                 <CollapsibleCard
-                  title="Editar hábitos compartidos"
-                  subtitle="Definí reglas de puntos y elegí qué hábitos querés unificar con tu tracker personal."
+                  title="Editar hÃ¡bitos compartidos"
+                  subtitle="DefinÃ­ reglas de puntos y elegÃ­ quÃ© hÃ¡bitos querÃ©s unificar con tu tracker personal."
                   open={sharedHabitsSectionOpen}
                   onToggle={() => setSharedHabitsSectionOpen((current) => !current)}
                 >
@@ -1352,7 +1374,7 @@ export default function CompetitionsPage() {
                                     disabled={busyKey === `log-${habit.id}-positive`}
                                     className="rounded-xl bg-accent-mint/15 px-3 py-2 text-xs text-accent-mint"
                                   >
-                                    Éxito
+                                    Ã‰xito
                                   </button>
                                   {canLogNegative(habit) ? (
                                     <button
@@ -1360,7 +1382,7 @@ export default function CompetitionsPage() {
                                       disabled={busyKey === `log-${habit.id}-negative`}
                                       className="rounded-xl bg-accent-coral/15 px-3 py-2 text-xs text-accent-coral"
                                     >
-                                      Recaída
+                                      RecaÃ­da
                                     </button>
                                   ) : null}
                                   <button
@@ -1397,14 +1419,14 @@ export default function CompetitionsPage() {
                                   <input
                                     value={editingHabitDescription}
                                     onChange={(event) => setEditingHabitDescription(event.target.value)}
-                                    placeholder="Descripción"
+                                    placeholder="DescripciÃ³n"
                                     className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-3 text-sm text-text-primary outline-none"
                                   />
                                   <div className="grid gap-2">
                                     {([
-                                      ['positive_only', 'Solo suma por éxito'],
-                                      ['negative_only', 'Solo resta por recaída'],
-                                      ['both', 'Suma por éxito y resta por recaída'],
+                                      ['positive_only', 'Solo suma por Ã©xito'],
+                                      ['negative_only', 'Solo resta por recaÃ­da'],
+                                      ['both', 'Suma por Ã©xito y resta por recaÃ­da'],
                                     ] as Array<[CompetitionScoringMode, string]>).map(([mode, label]) => (
                                       <button
                                         key={mode}
@@ -1427,14 +1449,14 @@ export default function CompetitionsPage() {
                                       type="number"
                                       value={editingPointsPositive}
                                       onChange={(event) => setEditingPointsPositive(Number(event.target.value))}
-                                      placeholder="Puntos por éxito"
+                                      placeholder="Puntos por Ã©xito"
                                       className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-3 text-sm text-text-primary outline-none"
                                     />
                                     <input
                                       type="number"
                                       value={editingPointsNegative}
                                       onChange={(event) => setEditingPointsNegative(Number(event.target.value))}
-                                      placeholder="Puntos por recaída"
+                                      placeholder="Puntos por recaÃ­da"
                                       className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-3 text-sm text-text-primary outline-none"
                                     />
                                   </div>
@@ -1491,7 +1513,7 @@ export default function CompetitionsPage() {
                     </div>
 
                     <Card className="space-y-4 bg-white/[0.02]">
-                      <SectionTitle title="Agregar hábito" subtitle="Usá labels claros para que todos entiendan qué puntúa." />
+                      <SectionTitle title="Agregar hÃ¡bito" subtitle="UsÃ¡ labels claros para que todos entiendan quÃ© puntÃºa." />
                       <label className="block space-y-2">
                         <span className="text-xs font-semibold text-text-secondary">Nombre</span>
                         <input
@@ -1502,7 +1524,7 @@ export default function CompetitionsPage() {
                         />
                       </label>
                       <label className="block space-y-2">
-                        <span className="text-xs font-semibold text-text-secondary">Descripción</span>
+                        <span className="text-xs font-semibold text-text-secondary">DescripciÃ³n</span>
                         <input
                           value={habitDescription}
                           onChange={(event) => setHabitDescription(event.target.value)}
@@ -1536,9 +1558,9 @@ export default function CompetitionsPage() {
                         <span className="text-xs font-semibold text-text-secondary">Modo de scoring</span>
                         <div className="grid gap-2">
                           {([
-                            ['positive_only', 'Solo suma por éxito'],
-                            ['negative_only', 'Solo resta por recaída'],
-                            ['both', 'Suma por éxito y resta por recaída'],
+                            ['positive_only', 'Solo suma por Ã©xito'],
+                            ['negative_only', 'Solo resta por recaÃ­da'],
+                            ['both', 'Suma por Ã©xito y resta por recaÃ­da'],
                           ] as Array<[CompetitionScoringMode, string]>).map(([mode, label]) => (
                             <button
                               key={mode}
@@ -1558,7 +1580,7 @@ export default function CompetitionsPage() {
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         <label className="block space-y-2">
-                          <span className="text-xs font-semibold text-text-secondary">Puntos por éxito</span>
+                          <span className="text-xs font-semibold text-text-secondary">Puntos por Ã©xito</span>
                           <input
                             type="number"
                             value={pointsPositive}
@@ -1567,7 +1589,7 @@ export default function CompetitionsPage() {
                           />
                         </label>
                         <label className="block space-y-2">
-                          <span className="text-xs font-semibold text-text-secondary">Puntos por recaída</span>
+                          <span className="text-xs font-semibold text-text-secondary">Puntos por recaÃ­da</span>
                           <input
                             type="number"
                             value={pointsNegative}
@@ -1617,7 +1639,7 @@ export default function CompetitionsPage() {
                         disabled={!habitName.trim() || busyKey === 'create-habit'}
                         className="w-full rounded-2xl bg-accent-mint/15 px-4 py-3 text-sm font-semibold text-accent-mint disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {busyKey === 'create-habit' ? 'Guardando...' : 'Agregar hábito compartido'}
+                        {busyKey === 'create-habit' ? 'Guardando...' : 'Agregar hÃ¡bito compartido'}
                       </button>
                     </Card>
                   </div>
@@ -1630,3 +1652,6 @@ export default function CompetitionsPage() {
     </div>
   );
 }
+
+
+

@@ -1,8 +1,24 @@
 import { config } from '../config.js';
 
+export function formatDateInTimezone(date: Date, timezone = config.timezone): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+  if (!year || !month || !day) {
+    throw new Error('No se pudo formatear fecha en timezone');
+  }
+  return `${year}-${month}-${day}`;
+}
+
 /** Get today's date as YYYY-MM-DD in the configured timezone */
 export function getTodayDate(timezone = config.timezone): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: timezone });
+  return formatDateInTimezone(new Date(), timezone);
 }
 
 /** Get current time as HH:MM in the configured timezone */
@@ -38,7 +54,7 @@ export function getDateRange(
   } else {
     startDate.setMonth(startDate.getMonth() - 1);
   }
-  const start = startDate.toLocaleDateString('en-CA');
+  const start = formatDateInTimezone(startDate, timezone);
   return { start, end };
 }
 

@@ -120,7 +120,8 @@ function StepSleep({ data, update }: StepProps) {
           step={1}
           value={qualityValue}
           onChange={(e) => update('sleepQuality', Number(e.target.value))}
-          className="w-full accent-[#fb7185]"
+          className="w-full"
+          style={{ accentColor: 'rgb(var(--color-accent-primary))' }}
         />
         <div className="flex justify-between text-[11px] font-mono text-text-muted">
           <span>Malo</span>
@@ -130,7 +131,7 @@ function StepSleep({ data, update }: StepProps) {
       </div>
       <div className="grid grid-cols-2 gap-3 text-left">
         <div className="space-y-1.5">
-          <label className="block text-xs font-mono uppercase tracking-widest text-text-secondary">Me acosté</label>
+          <label className="block text-xs font-mono uppercase tracking-widest text-text-secondary">Me acosté (anoche)</label>
           <div className="flex h-12 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.06] px-3">
             <Icon name="clock" size={16} className="text-text-muted" />
             <input
@@ -151,7 +152,7 @@ function StepSleep({ data, update }: StepProps) {
           )}
         </div>
         <div className="space-y-1.5">
-          <label className="block text-xs font-mono uppercase tracking-widest text-text-secondary">Me desperté</label>
+          <label className="block text-xs font-mono uppercase tracking-widest text-text-secondary">Me desperté (hoy)</label>
           <div className="flex h-12 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.06] px-3">
             <Icon name="clock" size={16} className="text-text-muted" />
             <input
@@ -172,6 +173,9 @@ function StepSleep({ data, update }: StepProps) {
           )}
         </div>
       </div>
+      <p className="text-[11px] text-text-muted text-left">
+        Registro nocturno: acostarse anoche y despertarse hoy.
+      </p>
     </div>
   );
 }

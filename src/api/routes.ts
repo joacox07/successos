@@ -39,7 +39,7 @@ import {
   updateCompetition,
   updateCompetitionHabit,
 } from '../db/competition.js';
-import { assertEditableDate, getEditableDateWindow, getTodayDate, normalizeDateKey } from '../utils/dates.js';
+import { assertEditableDate, formatDateInTimezone, getEditableDateWindow, getTodayDate, normalizeDateKey } from '../utils/dates.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 import {
@@ -195,7 +195,7 @@ async function buildCheckinState(userId: number, date: string) {
   const entry = await getTodayEntry(userId, date);
   const streakStart = new Date(`${date}T12:00:00`);
   streakStart.setDate(streakStart.getDate() - 60);
-  const entries = await getDailyEntries(userId, streakStart.toLocaleDateString('en-CA'), date);
+  const entries = await getDailyEntries(userId, formatDateInTimezone(streakStart, config.timezone), date);
   const entryDates = new Set(entries.map((item) => item.date));
   let streak = 0;
   const anchor = new Date(`${date}T12:00:00`);
@@ -964,14 +964,14 @@ router.get('/metrics', async (req: Request, res: Response) => {
   const { userId } = (req as any).user;
   const range = (req.query.range as string) || 'week';
   const tz = 'America/Argentina/Buenos_Aires';
-  const end = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const end = getTodayDate(tz);
 
   const [y, m, d] = end.split('-').map(Number);
   const startDate = new Date(y, m - 1, d);
   if (range === 'week') startDate.setDate(startDate.getDate() - 7);
   else if (range === 'month') startDate.setMonth(startDate.getMonth() - 1);
   else if (range === 'total') startDate.setFullYear(startDate.getFullYear() - 5);
-  const start = startDate.toLocaleDateString('en-CA');
+  const start = formatDateInTimezone(startDate, tz);
 
   const entries = await getDailyEntries(userId, start, end);
 
@@ -1250,7 +1250,7 @@ router.post('/chat', upload.single('audio'), async (req: Request, res: Response)
       const updatedEntry = await getTodayEntry(userId, entryDate);
       const streakStart = new Date(today + 'T12:00:00');
       streakStart.setDate(streakStart.getDate() - 60);
-      const entries = await getDailyEntries(userId, streakStart.toLocaleDateString('en-CA'), today);
+      const entries = await getDailyEntries(userId, formatDateInTimezone(streakStart, tz), today);
       const entryDates = new Set(entries.map(e => e.date));
       let streak = 0;
       const todayDate = new Date(today + 'T12:00:00');
@@ -1297,7 +1297,7 @@ router.post('/chat', upload.single('audio'), async (req: Request, res: Response)
     const updatedEntry = await getTodayEntry(userId, entryDate);
     const streakStart = new Date(today + 'T12:00:00');
     streakStart.setDate(streakStart.getDate() - 60);
-    const entries = await getDailyEntries(userId, streakStart.toLocaleDateString('en-CA'), today);
+    const entries = await getDailyEntries(userId, formatDateInTimezone(streakStart, tz), today);
     const entryDates = new Set(entries.map(e => e.date));
     let streak = 0;
     const todayDate = new Date(today + 'T12:00:00');
@@ -1362,7 +1362,7 @@ router.get('/chat/history', async (req: Request, res: Response) => {
     // Streak (only check last 60 days)
     const streakStart = new Date(today + 'T12:00:00');
     streakStart.setDate(streakStart.getDate() - 60);
-    const entries = await getDailyEntries(userId, streakStart.toLocaleDateString('en-CA'), today);
+    const entries = await getDailyEntries(userId, formatDateInTimezone(streakStart, tz), today);
     const entryDates = new Set(entries.map(e => e.date));
     let streak = 0;
     const todayDate = new Date(today + 'T12:00:00');
@@ -1689,7 +1689,7 @@ router.get('/study/sessions', async (req: Request, res: Response) => {
   if (range === 'week') startDate.setDate(startDate.getDate() - 7);
   else if (range === 'month') startDate.setMonth(startDate.getMonth() - 1);
   else startDate.setFullYear(startDate.getFullYear() - 1);
-  const sessions = await getStudySessions(userId, startDate.toLocaleDateString('en-CA'), end);
+  const sessions = await getStudySessions(userId, formatDateInTimezone(startDate, tz), end);
   res.json({ sessions });
 });
 
@@ -1699,7 +1699,7 @@ router.get('/study/stats', async (req: Request, res: Response) => {
   const end = new Date().toLocaleDateString('en-CA', { timeZone: tz });
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 7);
-  const stats = await getStudyStats(userId, startDate.toLocaleDateString('en-CA'), end);
+  const stats = await getStudyStats(userId, formatDateInTimezone(startDate, tz), end);
   res.json(stats);
 });
 

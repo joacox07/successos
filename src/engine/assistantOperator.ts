@@ -26,7 +26,7 @@ import {
   upsertDailyEntry,
 } from '../db/repository.js';
 import { assertEditableDate, getTodayDate, parseDateKey, resolveTargetDateFromText } from '../utils/dates.js';
-import { createEvent, deleteEvent, listEvents, updateEvent } from '../calendar/gcal.js';
+import { createEvent, deleteEvent, getAuthUrl, listEvents, updateEvent } from '../calendar/gcal.js';
 
 export type AssistantIntent = 'execute_action' | 'ask_clarification' | 'coach_reply';
 
@@ -84,9 +84,62 @@ function inferIntent(text: string): AssistantIntent {
 }
 
 function parseTime(text: string): string | null {
-  const m = text.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  const parsed = parseCalendarTime(text);
+  return parsed?.time || null;
+}
+
+function parseCalendarTime(rawTime: string): { time: string } | null {
+  const m = rawTime.match(/^\s*([01]?\d|2[0-3])(?::([0-5]\d)|\.([0-5]\d))?\s*(am|pm)?\s*$/i);
   if (!m) return null;
-  return `${m[1].padStart(2, '0')}:${m[2]}`;
+
+  let hour = Number(m[1]);
+  const minuteRaw = m[2] || m[3] || '00';
+  const minute = Number(minuteRaw);
+  const ampm = m[4]?.toLowerCase();
+
+  if (ampm === 'pm' && hour < 12) hour += 12;
+  if (ampm === 'am' && hour === 12) hour = 0;
+
+  // Ambiguous hour without am/pm or minutes (e.g. "a las 3") defaults to afternoon.
+  if (!ampm && minuteRaw === '00' && hour >= 1 && hour <= 7) hour += 12;
+
+  return {
+    time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+  };
+}
+
+function parseTimeRanges(raw: string): { startTime: string | null; endTime?: string } {
+  const n = normalizeText(raw);
+
+  const rangeMatch = n.match(/(?:de\s+)?(?:las\s+)?(\d{1,2}(?::\d{2})?(?:\s*[ap]m)?)\s+(?:a|hasta)\s+(?:las\s+)?(\d{1,2}(?::\d{2})?(?:\s*[ap]m)?)/i);
+  if (rangeMatch) {
+    const start = parseCalendarTime(rangeMatch[1]);
+    const end = parseCalendarTime(rangeMatch[2]);
+    if (start && end) {
+      return { startTime: start.time, endTime: end.time };
+    }
+  }
+
+  const startWithA = n.match(/\ba\s+las\s+(\d{1,2}(?::\d{2})?(?:\s*[ap]m)?)\b/i);
+  if (startWithA) {
+    const start = parseCalendarTime(startWithA[1]);
+    if (!start) return { startTime: null };
+
+    const until = n.match(/\bhasta\s+(?:las\s+)?(\d{1,2}(?::\d{2})?(?:\s*[ap]m)?)\b/i);
+    if (until) {
+      const end = parseCalendarTime(until[1]);
+      if (end) return { startTime: start.time, endTime: end.time };
+    }
+
+    return { startTime: start.time };
+  }
+
+  const generic = n.match(/\b([01]?\d|2[0-3])(?::([0-5]\d)|\.([0-5]\d))?\s*(am|pm)?\b/i);
+  if (!generic) return { startTime: null };
+
+  const token = `${generic[1]}${generic[2] ? `:${generic[2]}` : generic[3] ? `.${generic[3]}` : ''}${generic[4] ? ` ${generic[4]}` : ''}`;
+  const parsed = parseCalendarTime(token);
+  return { startTime: parsed?.time || null };
 }
 
 function deriveCalendarDate(text: string, timezone: string): string | null {
@@ -188,13 +241,16 @@ function parseActionPlan(text: string, timezone: string): { action?: PlannedActi
 
   if (/\b(agenda|agendame|programa)\b/.test(n)) {
     const date = deriveCalendarDate(raw, timezone) || getTodayDate(timezone);
-    const time = parseTime(raw);
-    if (!time) {
-      return { clarification: 'Decime la hora exacta para agendarlo (HH:MM).' };
+    const { startTime, endTime } = parseTimeRanges(raw);
+    if (!startTime) {
+      return { clarification: 'Decime a que hora queres agendarlo.' };
     }
-    const summaryMatch = raw.match(/(?:agenda(?:me)?|programa)\s+(.+?)(?:\s+(?:manana|hoy|anteayer|ayer|el\s+\d{1,2}\s+de\s+\w+))?(?:\s+a\s+las|\s+\d{1,2}[:.]\d{2})/i);
+    if (!endTime) {
+      return { clarification: 'Cuanto dura? Decime hora de fin o duracion (ej: "hasta las 18" o "90 min").' };
+    }
+    const summaryMatch = raw.match(/(?:agenda(?:me)?|programa)\s+(.+?)(?:\s+(?:manana|hoy|anteayer|ayer|el\s+\d{1,2}\s+de\s+\w+))?(?:\s+a\s+las|\s+\d{1,2}(?::\d{2})?(?:\s*[ap]m)?)/i);
     const summary = (summaryMatch?.[1] || 'Evento').trim();
-    return { action: { type: 'calendar.create', data: { summary, date, time } } };
+    return { action: { type: 'calendar.create', data: { summary, date, time: startTime, endTime } } };
   }
 
   const deleteEvent = n.match(/\b(elimina|borra)\b.*\b(evento|reunion)\b.*\b(id|#)\s*([a-zA-Z0-9_-]+)\b/);
@@ -362,18 +418,41 @@ export async function handleOperatorMessage(userId: number, text: string, timezo
   if (action.type === 'calendar.create') {
     const tokens = await getCalendarTokens(userId);
     if (!tokens) {
+      const authUrl = getAuthUrl(userId);
       return {
         intent: 'ask_clarification',
         handled: true,
-        response: 'Para agendar, primero conectá Google Calendar en Agenda.',
+        response: `No pude agendar porque no tenes Google Calendar conectado. Conectalo aca: ${authUrl}`,
         executedActions: [],
         needsClarification: true,
-        clarificationQuestion: 'Conectá Google Calendar para continuar.',
+        clarificationQuestion: 'Conecta Google Calendar para continuar.',
       };
     }
     const start = `${action.data.date}T${action.data.time}:00`;
-    const end = `${action.data.date}T${action.data.endTime || action.data.time}:00`;
-    const created = await createEvent(tokens, { summary: action.data.summary, start, end, allDay: false });
+    const end = `${action.data.date}T${action.data.endTime}:00`;
+    let created;
+    try {
+      created = await createEvent(tokens, { summary: action.data.summary, start, end, allDay: false });
+    } catch {
+      return {
+        intent: 'ask_clarification',
+        handled: true,
+        response: 'Intente agendar el evento pero Google Calendar devolvio un error. Proba de nuevo en un momento.',
+        executedActions: [],
+        needsClarification: true,
+        clarificationQuestion: 'No se pudo crear el evento por un error de Google Calendar.',
+      };
+    }
+    if (!created?.id) {
+      return {
+        intent: 'ask_clarification',
+        handled: true,
+        response: 'Intente agendar el evento pero no recibi confirmacion de Google Calendar.',
+        executedActions: [],
+        needsClarification: true,
+        clarificationQuestion: 'No hubo confirmacion de creacion del evento.',
+      };
+    }
     undoToken = await createUndoLog(userId, action.type, { eventId: created.id });
     effectiveDate = action.data.date;
     executedActions.push({ type: action.type, entity: `calendar:${created.id}`, summary: `evento "${created.summary}" agendado`, effectiveDate: action.data.date });

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/hooks/useApi';
@@ -10,20 +10,13 @@ import type {
   StudySession,
   MetricEntry,
 } from '@/lib/api';
-import { cn, formatDateFull, categoryIcon, categoryColor } from '@/lib/utils';
+import { cn, formatDateFull, categoryIcon, categoryColor, dateFromISO, getDefaultCheckinTargetDate, toISODate } from '@/lib/utils';
 import Icon from '@/components/Icon';
 import DailyCheckin from '@/components/DailyCheckin';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function toISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 function formatTime(timestamp: string): string {
   const d = new Date(timestamp);
@@ -507,11 +500,13 @@ function EmptyState({ date }: { date: Date }) {
 export default function DiaryPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const dateParam = searchParams.get('date');
+  const { data: profileData } = useApi(() => api.getProfile());
+  const hasAppliedProfileDefaultRef = useRef(false);
+
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const dateParam = searchParams.get('date');
     if (dateParam) {
-      const [y, m, d] = dateParam.split('-').map(Number);
-      return new Date(y, m - 1, d);
+      return dateFromISO(dateParam);
     }
     return new Date();
   });
@@ -527,12 +522,17 @@ export default function DiaryPage() {
     [dateStr, refreshToken],
   );
 
+  useEffect(() => {
+    if (dateParam || hasAppliedProfileDefaultRef.current || !profileData) return;
+    hasAppliedProfileDefaultRef.current = true;
+    setSelectedDate(getDefaultCheckinTargetDate(profileData.defaultCheckinDayMode));
+  }, [dateParam, profileData]);
+
   const handleDatePick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val) {
-      const [y, m, d] = val.split('-').map(Number);
       setDirection(0);
-      setSelectedDate(new Date(y, m - 1, d));
+      setSelectedDate(dateFromISO(val));
       setShowDatePicker(false);
     }
   }, []);
