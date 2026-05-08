@@ -97,3 +97,4 @@ export function CheckinFab({ onOpenChat, onOpenQuick, routeKey }: CheckinFabProp
     </div>
   );
 }
+
