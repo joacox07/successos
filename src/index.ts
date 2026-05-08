@@ -14,17 +14,20 @@ async function main() {
   initDb();
   logger.info('Database ready (tables verified)');
 
-  // WhatsApp connection
-  const { startWhatsApp, notifyAdmin } = await import('./whatsapp/connection.js');
-  await startWhatsApp();
+  // API Server (for PWA)
+  const { startApiServer } = await import('./api/server.js');
+  startApiServer();
 
   // Scheduler
   const { startScheduler } = await import('./scheduler/cron.js');
   startScheduler();
 
-  // API Server (for PWA)
-  const { startApiServer } = await import('./api/server.js');
-  startApiServer();
+  // WhatsApp connection should not block API startup/login
+  const { startWhatsApp, notifyAdmin } = await import('./whatsapp/connection.js');
+  startWhatsApp().catch((err) => {
+    logger.error({ err }, 'WhatsApp startup failed');
+    notifyAdmin(`WhatsApp startup error: ${err.message}`).catch(() => {});
+  });
 
   // Graceful shutdown
   const shutdown = (signal: string) => {
