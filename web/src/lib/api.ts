@@ -126,6 +126,12 @@ export const api = {
   getChatHistory: (limit = 50) =>
     fetchApi<ChatHistoryData>(`/chat/history?limit=${limit}`),
 
+  undoAssistantAction: (undoToken: string) =>
+    fetchApi<{ ok: boolean; message: string }>('/assistant/undo', {
+      method: 'POST',
+      body: JSON.stringify({ undoToken }),
+    }),
+
   // Check-in
   getCheckinToday: () =>
     fetchApi<CheckinTodayData>('/checkin/today'),
@@ -164,27 +170,27 @@ export const api = {
   getHabits: (date?: string) =>
     fetchApi<HabitsData>(`/habits${date ? `?date=${date}` : ''}`),
 
-  createHabit: (data: { name: string; emoji?: string; category?: string; frequency?: string; isNegative?: boolean }) =>
+  createHabit: (data: { name: string; emoji?: string; category?: string; frequency?: string; isNegative?: boolean; targetMinutes?: number | null }) =>
     fetchApi<{ ok: boolean; habit: Habit }>('/habits', { method: 'POST', body: JSON.stringify(data) }),
 
-  updateHabit: (id: number, data: { name?: string; emoji?: string; category?: string; isNegative?: boolean }) =>
+  updateHabit: (id: number, data: { name?: string; emoji?: string; category?: string; isNegative?: boolean; targetMinutes?: number | null }) =>
     fetchApi<{ ok: boolean }>(`/habits/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   deleteHabit: (id: number) =>
     fetchApi<{ ok: boolean }>(`/habits/${id}`, { method: 'DELETE' }),
 
   toggleHabit: (id: number, date?: string) =>
-    fetchApi<{ ok: boolean; completed: boolean; habits?: HabitsData }>(`/habits/${id}/toggle`, {
+    fetchApi<{ ok: boolean; completed: boolean; habits?: HabitsData; competition?: any }>(`/habits/${id}/toggle`, {
       method: 'POST', body: JSON.stringify({ date }),
     }),
 
   setHabitStatus: (id: number, status: 'positive' | 'negative' | 'clear', date?: string) =>
-    fetchApi<{ ok: boolean; status: string; marked: boolean; habits?: HabitsData }>(`/habits/${id}/status`, {
+    fetchApi<{ ok: boolean; status?: string; marked?: boolean; habits?: HabitsData; competition?: any }>(`/habits/${id}/status`, {
       method: 'POST', body: JSON.stringify({ status, date }),
     }),
 
   setHabitMinutes: (id: number, minutes: number, date?: string, mode: 'add' | 'set' = 'set') =>
-    fetchApi<{ ok: boolean; minutesLogged: number; targetMinutes: number | null; completed: boolean; status: string; habits?: HabitsData }>(`/habits/${id}/minutes`, {
+    fetchApi<{ ok: boolean; minutesLogged?: number; targetMinutes?: number | null; completed?: boolean; status?: string; habits?: HabitsData; competition?: any }>(`/habits/${id}/minutes`, {
       method: 'POST', body: JSON.stringify({ minutes, date, mode }),
     }),
 
@@ -921,6 +927,17 @@ export interface ChatResponse {
   entryDate?: string;
   streak: number;
   transcription?: string;
+  type?: string;
+  executedActions?: Array<{
+    type: string;
+    entity: string;
+    summary: string;
+    effectiveDate?: string;
+  }>;
+  needsClarification?: boolean;
+  clarificationQuestion?: string | null;
+  undoToken?: string | null;
+  effectiveDate?: string;
 }
 
 export interface ChatHistoryData {

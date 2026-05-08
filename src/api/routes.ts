@@ -9,6 +9,7 @@ import { generateCoachResponse } from '../ai/coach.js';
 import { generateGuideResponse, generateCalendarChatResponse, type CalendarChatResult } from '../ai/guide.js';
 import { transcribeAudio } from '../ai/transcriber.js';
 import { trackExtraction } from '../engine/tracker.js';
+import { handleOperatorMessage, undoOperatorAction } from '../engine/assistantOperator.js';
 import { logger } from '../utils/logger.js';
 import {
   applySuggestedCompetitionHabitLink,
@@ -59,6 +60,7 @@ import {
   setHabitLogStatus,
   addHabitLogMinutes,
   toggleHabitLog,
+  mutatePersonalHabitForDate,
   getHabitLogs,
   getHabitsToday,
   createStudySession,
@@ -1231,7 +1233,52 @@ router.post('/chat', upload.single('audio'), async (req: Request, res: Response)
       return res.status(400).json({ error: 'No text or audio provided' });
     }
 
-    // Use shared message processor (same logic as WhatsApp handler)
+    // Operator-first flow for PWA: execute actions before conversational coaching.
+    const operator = await handleOperatorMessage(userId, text, tz);
+    if (operator.handled) {
+      if (operator.response) {
+        await logMessage({
+          userId,
+          direction: 'out',
+          contentType: 'text',
+          rawContent: operator.response,
+          extractedData: operator.executedActions as any,
+        });
+      }
+
+      const entryDate = operator.effectiveDate || today;
+      const updatedEntry = await getTodayEntry(userId, entryDate);
+      const streakStart = new Date(today + 'T12:00:00');
+      streakStart.setDate(streakStart.getDate() - 60);
+      const entries = await getDailyEntries(userId, streakStart.toLocaleDateString('en-CA'), today);
+      const entryDates = new Set(entries.map(e => e.date));
+      let streak = 0;
+      const todayDate = new Date(today + 'T12:00:00');
+      for (let i = 0; i < 60; i++) {
+        const d = new Date(todayDate);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        if (entryDates.has(dateStr)) streak++;
+        else if (i > 0) break;
+      }
+
+      return res.json({
+        response: operator.response,
+        extractedData: null,
+        currentEntry: updatedEntry,
+        entryDate,
+        streak,
+        type: 'assistant-operator',
+        executedActions: operator.executedActions,
+        needsClarification: operator.needsClarification,
+        clarificationQuestion: operator.clarificationQuestion || null,
+        undoToken: operator.undoToken || null,
+        effectiveDate: operator.effectiveDate || entryDate,
+        ...(transcription ? { transcription } : {}),
+      });
+    }
+
+    // Fallback shared processor (legacy conversational flow)
     const { processMessage } = await import('../engine/messageProcessor.js');
     const result = await processMessage(userId, text, {
       timezone: tz,
@@ -1269,11 +1316,36 @@ router.post('/chat', upload.single('audio'), async (req: Request, res: Response)
       entryDate,
       streak,
       type: result.type,
+      executedActions: [],
+      needsClarification: false,
+      clarificationQuestion: null,
+      undoToken: null,
+      effectiveDate: entryDate,
       ...(transcription ? { transcription } : {}),
     });
   } catch (err) {
     logger.error({ err }, 'Chat endpoint error');
     res.status(500).json({ error: 'Error procesando mensaje' });
+  }
+});
+
+router.post('/assistant/undo', async (req: Request, res: Response) => {
+  try {
+    const { userId } = (req as any).user;
+    const undoToken = String(req.body?.undoToken || '').trim();
+    if (!undoToken) return res.status(400).json({ ok: false, error: 'undoToken requerido' });
+    const result = await undoOperatorAction(userId, undoToken);
+    if (!result.ok) return res.status(400).json({ ok: false, error: result.message });
+    await logMessage({
+      userId,
+      direction: 'out',
+      contentType: 'text',
+      rawContent: result.message,
+    });
+    return res.json({ ok: true, message: result.message });
+  } catch (err) {
+    logger.error({ err }, 'POST /assistant/undo error');
+    return res.status(500).json({ ok: false, error: 'No se pudo deshacer la acción' });
   }
 });
 
@@ -1342,7 +1414,7 @@ router.post('/checkin', async (req: Request, res: Response) => {
   try {
     assertEditableDate(date, tz);
   } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : 'Solo podés modificar hoy y los últimos 3 días' });
+    return res.status(400).json({ error: err instanceof Error ? err.message : 'Solo podés modificar hoy y los últimos 7 días' });
   }
 
   const data: any = {};
@@ -1398,9 +1470,25 @@ router.get('/habits', async (req: Request, res: Response) => {
 router.post('/habits', async (req: Request, res: Response) => {
   try {
     const { userId } = (req as any).user;
-    const { name, emoji, category, frequency, isNegative } = req.body;
+    const { name, emoji, category, frequency, isNegative, targetMinutes } = req.body;
     if (!name) return res.status(400).json({ error: 'Nombre requerido' });
-    const habit = await createHabit({ userId, name, emoji, category, frequency, isNegative: !!isNegative });
+    const parsedTargetMinutes =
+      targetMinutes === null || targetMinutes === undefined || targetMinutes === ''
+        ? null
+        : Number(targetMinutes);
+    if (parsedTargetMinutes !== null && (!Number.isFinite(parsedTargetMinutes) || parsedTargetMinutes < 0)) {
+      return res.status(400).json({ error: 'Minutos objetivo invalidos' });
+    }
+    const normalizedIsNegative = !!isNegative;
+    const habit = await createHabit({
+      userId,
+      name,
+      emoji,
+      category,
+      frequency,
+      isNegative: normalizedIsNegative,
+      targetMinutes: normalizedIsNegative ? null : parsedTargetMinutes,
+    });
     res.json({ ok: true, habit });
   } catch (err) {
     logger.error({ err }, 'Error creating habit');
@@ -1411,9 +1499,19 @@ router.post('/habits', async (req: Request, res: Response) => {
 router.put('/habits/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { name, emoji, category, frequency, isNegative } = req.body;
+    const { name, emoji, category, frequency, isNegative, targetMinutes } = req.body;
     const updateData: Record<string, unknown> = { name, emoji, category, frequency };
-    if (isNegative !== undefined) updateData.isNegative = isNegative;
+    const parsedTargetMinutes =
+      targetMinutes === null || targetMinutes === undefined || targetMinutes === ''
+        ? null
+        : Number(targetMinutes);
+    if (parsedTargetMinutes !== null && (!Number.isFinite(parsedTargetMinutes) || parsedTargetMinutes < 0)) {
+      return res.status(400).json({ error: 'Minutos objetivo invalidos' });
+    }
+    if (isNegative !== undefined) updateData.isNegative = !!isNegative;
+    if (targetMinutes !== undefined || isNegative === true) {
+      updateData.targetMinutes = isNegative ? null : parsedTargetMinutes;
+    }
     await updateHabit(id, updateData);
     res.json({ ok: true });
   } catch (err) {
@@ -1441,8 +1539,10 @@ router.post('/habits/:id/toggle', async (req: Request, res: Response) => {
     const date = (req.body.date as string) || getTodayDate(tz);
     assertEditableDate(date, tz);
     const completed = await toggleHabitLog(habitId, userId, date);
+    const { recomputeLinkedCompetitionForDay } = await import('../db/competition.js');
+    const competition = recomputeLinkedCompetitionForDay({ userId, date, personalHabitIds: [habitId] });
     const habitsState = await getHabitsToday(userId, date);
-    res.json({ ok: true, completed, habits: habitsState });
+    res.json({ ok: true, completed, habits: habitsState, competition });
   } catch (err) {
     logger.error({ err }, 'Error toggling habit');
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error al marcar hábito' });
@@ -1460,9 +1560,11 @@ router.post('/habits/:id/status', async (req: Request, res: Response) => {
     const tz = 'America/Argentina/Buenos_Aires';
     const targetDate = date || getTodayDate(tz);
     assertEditableDate(targetDate, tz);
-    const result = await setHabitLogStatus(habitId, userId, targetDate, status);
+    const result = await mutatePersonalHabitForDate({ habitId, userId, date: targetDate, patch: { eventStatus: status } });
+    const { recomputeLinkedCompetitionForDay } = await import('../db/competition.js');
+    const competition = recomputeLinkedCompetitionForDay({ userId, date: targetDate, personalHabitIds: [habitId] });
     const habitsState = await getHabitsToday(userId, targetDate);
-    res.json({ ok: true, ...result, habits: habitsState });
+    res.json({ ok: true, ...(result ?? {}), habits: habitsState, competition });
   } catch (err) {
     logger.error({ err }, 'Error setting habit status');
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error al marcar habito' });
@@ -1486,17 +1588,12 @@ router.post('/habits/:id/minutes', async (req: Request, res: Response) => {
     const tz = 'America/Argentina/Buenos_Aires';
     const targetDate = date || getTodayDate(tz);
     assertEditableDate(targetDate, tz);
-    const result = await addHabitLogMinutes(habitId, userId, targetDate, Number(rawMinutes), mode === 'set' ? 'set' : 'add');
-    const { syncCompetitionDurationFromPersonal } = await import('../db/competition.js');
-    syncCompetitionDurationFromPersonal({
-      personalHabitId: habitId,
-      userId,
-      date: targetDate,
-      minutesDelta: Number(rawMinutes),
-      mode: mode === 'set' ? 'set' : 'add',
-    });
+    const op = mode === 'set' ? 'set' : 'add';
+    const result = await mutatePersonalHabitForDate({ habitId, userId, date: targetDate, patch: { minutes: { op, value: Number(rawMinutes) } } });
+    const { recomputeLinkedCompetitionForDay } = await import('../db/competition.js');
+    const competition = recomputeLinkedCompetitionForDay({ userId, date: targetDate, personalHabitIds: [habitId] });
     const habitsState = await getHabitsToday(userId, targetDate);
-    res.json({ ok: true, ...result, habits: habitsState });
+    res.json({ ok: true, ...(result ?? {}), habits: habitsState, competition });
   } catch (err) {
     logger.error({ err }, 'Error setting habit minutes');
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error al registrar minutos' });
@@ -1940,7 +2037,7 @@ router.get('/day/:date', async (req: Request, res: Response) => {
     res.json({
       date,
       canEdit,
-      editableWindowDays: 3,
+      editableWindowDays: 7,
       entry: buildCheckinPayload(entry),
       messages: messages.map(m => ({
         id: m.id,

@@ -119,6 +119,19 @@ function ensureTables(db: InstanceType<typeof Database>) {
 
     CREATE INDEX IF NOT EXISTS messages_user_timestamp_idx ON messages(user_id, timestamp);
 
+    CREATE TABLE IF NOT EXISTS action_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      undo_token TEXT NOT NULL UNIQUE,
+      action_type TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      reversible_until TEXT NOT NULL,
+      undone INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS action_logs_user_created_idx ON action_logs(user_id, created_at);
+
     CREATE TABLE IF NOT EXISTS patterns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL REFERENCES users(id),
@@ -156,6 +169,17 @@ function ensureTables(db: InstanceType<typeof Database>) {
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS onboarding_state_user_idx ON onboarding_state(user_id);
+
+    CREATE TABLE IF NOT EXISTS pending_habit_minutes_state (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      habit_id INTEGER NOT NULL REFERENCES habits(id),
+      target_date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pending_habit_minutes_state_user_idx ON pending_habit_minutes_state(user_id);
 
     CREATE TABLE IF NOT EXISTS sent_checkins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -358,6 +382,7 @@ function ensureTables(db: InstanceType<typeof Database>) {
     "ALTER TABLE habits ADD COLUMN is_negative INTEGER DEFAULT 0",
     "ALTER TABLE habits ADD COLUMN target_minutes INTEGER",
     "ALTER TABLE habit_logs ADD COLUMN status TEXT DEFAULT 'positive'",
+    "ALTER TABLE pending_habit_minutes_state ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
     "ALTER TABLE habit_logs ADD COLUMN minutes_logged INTEGER DEFAULT 0",
     "ALTER TABLE competition_habits ADD COLUMN kind TEXT NOT NULL DEFAULT 'event'",
     "ALTER TABLE competition_habits ADD COLUMN minutes_per_block INTEGER",

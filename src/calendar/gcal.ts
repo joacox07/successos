@@ -138,6 +138,46 @@ export async function deleteEvent(
   logger.info({ eventId }, 'Calendar event deleted');
 }
 
+/** Update a calendar event by ID. */
+export async function updateEvent(
+  tokens: { accessToken: string; refreshToken?: string | null; expiryDate?: string | null },
+  eventId: string,
+  event: CalendarEvent,
+): Promise<CalendarEvent> {
+  const cal = getCalendar(tokens);
+
+  const body: calendar_v3.Schema$Event = {
+    summary: event.summary,
+    description: event.description,
+  };
+
+  if (event.allDay) {
+    const dateStr = event.start.slice(0, 10);
+    body.start = { date: dateStr };
+    body.end = { date: event.end?.slice(0, 10) || dateStr };
+  } else {
+    const startDt = new Date(event.start);
+    const endDt = event.end ? new Date(event.end) : new Date(startDt.getTime() + 60 * 60 * 1000);
+    body.start = { dateTime: startDt.toISOString(), timeZone: config.timezone };
+    body.end = { dateTime: endDt.toISOString(), timeZone: config.timezone };
+  }
+
+  const res = await cal.events.patch({
+    calendarId: 'primary',
+    eventId,
+    requestBody: body,
+  });
+
+  return {
+    id: res.data.id || eventId,
+    summary: res.data.summary || event.summary,
+    description: res.data.description || event.description,
+    start: res.data.start?.dateTime || res.data.start?.date || event.start,
+    end: res.data.end?.dateTime || res.data.end?.date || event.end,
+    allDay: !!res.data.start?.date,
+  };
+}
+
 /** Search events by text query. */
 export async function searchEvents(
   tokens: { accessToken: string; refreshToken?: string | null; expiryDate?: string | null },

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared message processor used by both WhatsApp handler and Web Chat API.
  * Centralizes all message handling logic: quick logs, status, help, calendar,
  * recalibration, extraction, tracking, and coaching.
@@ -12,23 +12,27 @@ import {
   logMessage,
   getRecentMessagesAsc,
   getUserHabits,
+  getUserDefaultCheckinDayMode,
+  getPendingHabitMinutesState,
+  upsertPendingHabitMinutesState,
+  deletePendingHabitMinutesState,
 } from '../db/repository.js';
 import { extractData } from '../ai/extractor.js';
 import { generateCoachResponse } from '../ai/coach.js';
 import { trackExtraction } from '../engine/tracker.js';
 import { processRecalibration } from '../engine/recalibration.js';
 import { STATUS_PROMPT } from '../ai/prompts.js';
-import { assertEditableDate, getTodayDate, resolveTargetDateFromText } from '../utils/dates.js';
+import { assertEditableDate, getTodayDate, normalizeDateKey, parseDateKey, resolveTargetDateFromText } from '../utils/dates.js';
 
 const RECALIBRATION_KEYWORDS = [
   'cambiar objetivo', 'cambiar meta', 'ajustar objetivo', 'ajustar meta',
   'pausar objetivo', 'pausar meta', 'nuevo objetivo', 'nueva meta',
-  'agregar objetivo', 'completé el objetivo', 'completé mi objetivo',
+  'agregar objetivo', 'completÃ© el objetivo', 'completÃ© mi objetivo',
   'quiero cambiar', 'subir la meta', 'bajar la meta',
 ];
 
-const STATUS_KEYWORDS = ['como vengo', 'cómo vengo', 'status', 'resumen', 'estado', 'como voy', 'cómo voy', 'progreso'];
-const HELP_KEYWORDS = ['ayuda', 'help', 'comandos', 'qué puedo hacer', 'que puedo hacer'];
+const STATUS_KEYWORDS = ['como vengo', 'cÃ³mo vengo', 'status', 'resumen', 'estado', 'como voy', 'cÃ³mo voy', 'progreso'];
+const HELP_KEYWORDS = ['ayuda', 'help', 'comandos', 'quÃ© puedo hacer', 'que puedo hacer'];
 
 function isQuickLog(text: string): boolean {
   return text.trim().endsWith('$');
@@ -56,26 +60,96 @@ function needsRetroactiveClarification(text: string): boolean {
   return /\b(me olvide|me olvide de marcar|me olvide de anotar|no marque|no tilde|corregi|corrigi|falto anotar)\b/.test(normalized);
 }
 
+const PENDING_HABIT_MINUTES_TTL_MS = 2 * 60 * 60 * 1000;
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeHabitName(value: string) {
+  return normalizeText(value);
+}
+
+function findHabitMatch(
+  existingHabits: Array<{ id: number; name: string; category: string | null; isNegative?: boolean | null; targetMinutes?: number | null }>,
+  habitName: string,
+) {
+  const target = normalizeHabitName(habitName);
+  if (!target) return null;
+
+  const exact = existingHabits.filter((habit) => normalizeHabitName(habit.name) === target);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return null;
+
+  const fuzzy = existingHabits.filter((habit) => {
+    const current = normalizeHabitName(habit.name);
+    return current.includes(target) || target.includes(current);
+  });
+  return fuzzy.length === 1 ? fuzzy[0] : null;
+}
+
+function extractDurationMinutesFromText(text: string): number | null {
+  const normalized = normalizeText(text).replace(',', '.');
+
+  const minutesMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(min|minuto|minutos)\b/);
+  if (minutesMatch) {
+    const value = Number(minutesMatch[1]);
+    if (Number.isFinite(value) && value > 0) return Math.round(value);
+  }
+
+  const hoursMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(h|hs|hora|horas)\b/);
+  if (hoursMatch) {
+    const value = Number(hoursMatch[1]);
+    if (Number.isFinite(value) && value > 0) return Math.round(value * 60);
+  }
+
+  if (/\b(media hora|medio hora)\b/.test(normalized)) return 30;
+  if (/\b(una hora|un hora)\b/.test(normalized)) return 60;
+
+  const bareNumber = normalized.match(/^\s*(\d{1,3})(?:\s+min(?:utos?)?)?\s*$/);
+  if (bareNumber) {
+    const value = Number(bareNumber[1]);
+    if (value > 0 && value <= 720) return value;
+  }
+
+  return null;
+}
+
+function isStrongContextSwitch(text: string): boolean {
+  const normalized = normalizeText(text);
+  if (!normalized) return false;
+  if (isHelpRequest(normalized) || isStatusRequest(normalized)) return true;
+  if (/\b(calendario|agenda|agendame|agendar|reunion|reunion|evento)\b/.test(normalized)) return true;
+  if (/\b(cambiar objetivo|cambiar meta|ajustar objetivo|ajustar meta|nuevo objetivo|nueva meta)\b/.test(normalized)) return true;
+  return false;
+}
+
 const HELP_MESSAGE = `*SuccessOS - Comandos*
 
-Podés escribirme lo que sea naturalmente (texto o audio) y yo extraigo los datos. Además:
+PodÃ©s escribirme lo que sea naturalmente (texto o audio) y yo extraigo los datos. AdemÃ¡s:
 
-• *"status"* o *"cómo vengo"* - Tu progreso actual
-• *"resumen"* - Resumen del día
-• *"ayuda"* - Este mensaje
-• *"cambiar objetivo"* - Modificar tus metas
-• *"nuevo objetivo"* - Agregar una meta nueva
+â€¢ *"status"* o *"cÃ³mo vengo"* - Tu progreso actual
+â€¢ *"resumen"* - Resumen del dÃ­a
+â€¢ *"ayuda"* - Este mensaje
+â€¢ *"cambiar objetivo"* - Modificar tus metas
+â€¢ *"nuevo objetivo"* - Agregar una meta nueva
 
-📅 *Calendario:*
-• *"agendame reunión mañana a las 3pm"* - Crear evento
-• *"qué tengo hoy"* o *"mi agenda"* - Ver eventos
-• *"borrá la reunión del martes"* - Eliminar evento
-• *"conectar calendario"* - Vincular Google Calendar
+ðŸ“… *Calendario:*
+â€¢ *"agendame reuniÃ³n maÃ±ana a las 3pm"* - Crear evento
+â€¢ *"quÃ© tengo hoy"* o *"mi agenda"* - Ver eventos
+â€¢ *"borrÃ¡ la reuniÃ³n del martes"* - Eliminar evento
+â€¢ *"conectar calendario"* - Vincular Google Calendar
 
-También podés mandar logs rápidos (terminá con $):
-• "gym 1hr$" • "dormí 6hs $" • "leí 30 pag $"
+TambiÃ©n podÃ©s mandar logs rÃ¡pidos (terminÃ¡ con $):
+â€¢ "gym 1hr$" â€¢ "dormÃ­ 6hs $" â€¢ "leÃ­ 30 pag $"
 
-Y para el resto, contame tu día como si hablaras con un amigo.`;
+Y para el resto, contame tu dÃ­a como si hablaras con un amigo.`;
 
 export interface ProcessResult {
   response: string;
@@ -83,6 +157,18 @@ export interface ProcessResult {
   targetDate?: string;
   type: 'help' | 'trivial' | 'status' | 'recalibration' | 'calendar' | 'quick-log' | 'full' | 'calendar-connect';
   transcription?: string;
+}
+
+function deriveImplicitContextDate(
+  mode: 'today' | 'previous_day',
+  timezone: string,
+): string {
+  const today = parseDateKey(getTodayDate(timezone));
+  if (!today) return getTodayDate(timezone);
+  if (mode === 'previous_day') {
+    today.setUTCDate(today.getUTCDate() - 1);
+  }
+  return normalizeDateKey(today);
 }
 
 export async function processMessage(
@@ -98,7 +184,6 @@ export async function processMessage(
   const today = getTodayDate(tz);
   const incomingContentType = options?.contentType || 'text';
   const targetDateHint = resolveTargetDateFromText(text, tz);
-  const contextDate = targetDateHint.date || today;
 
   const inMsg = await logMessage({
     userId,
@@ -112,7 +197,7 @@ export async function processMessage(
   if (CALENDAR_CONNECT_KEYWORDS.some((kw) => textLowerEarly.includes(kw)) && config.googleClientId) {
     const { getAuthUrl } = await import('../calendar/gcal.js');
     const authUrl = getAuthUrl(userId);
-    const response = `Para conectar tu Google Calendar, abrí este link:\n${authUrl}`;
+    const response = `Para conectar tu Google Calendar, abrÃ­ este link:\n${authUrl}`;
     await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
     return { response, type: 'calendar-connect' };
   }
@@ -123,18 +208,79 @@ export async function processMessage(
   }
 
   if (!targetDateHint.matched && targetDateHint.ambiguous && needsRetroactiveClarification(text)) {
-    const response = 'Decime si fue hoy, ayer, anteayer o hace 3 días y lo marco en ese día.';
+    const response = 'Decime si fue hoy, ayer, anteayer o hace 3 dÃ­as y lo marco en ese dÃ­a.';
     await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
     return { response, type: 'full' };
   }
 
-  if (targetDateHint.date) {
+  const defaultCheckinDayMode = await getUserDefaultCheckinDayMode(userId);
+  const contextDate = targetDateHint.date || deriveImplicitContextDate(defaultCheckinDayMode, tz);
+
+  if (contextDate) {
     try {
-      assertEditableDate(targetDateHint.date, tz);
+      assertEditableDate(contextDate, tz);
     } catch (err) {
-      const response = err instanceof Error ? err.message : 'Solo podés modificar hoy y los últimos 3 días';
+      const response = err instanceof Error ? err.message : 'Solo podÃ©s modificar hoy y los Ãºltimos 3 dÃ­as';
       await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
-      return { response, type: 'full', targetDate: targetDateHint.date };
+      return { response, type: 'full', targetDate: contextDate };
+    }
+  }
+
+  const pendingMinutesState = await getPendingHabitMinutesState(userId);
+  if (pendingMinutesState) {
+    const createdAtMs = new Date(pendingMinutesState.createdAt).getTime();
+    const isExpired = !Number.isFinite(createdAtMs) || (Date.now() - createdAtMs) > PENDING_HABIT_MINUTES_TTL_MS;
+    if (isExpired) {
+      await deletePendingHabitMinutesState(userId);
+    } else {
+      if (isStrongContextSwitch(text)) {
+        await deletePendingHabitMinutesState(userId);
+        const response = 'Perfecto. DejÃ© sin efecto la carga pendiente de minutos; cuando quieras la retomamos.';
+        await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
+        return { response, type: 'full', targetDate: pendingMinutesState.targetDate };
+      }
+
+      const minutes = extractDurationMinutesFromText(text);
+      if (!minutes || minutes <= 0) {
+        const response = 'Necesito un nÃºmero de minutos para anotarlo. Ejemplo: "30" o "90 minutos".';
+        await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
+        return { response, type: 'full', targetDate: pendingMinutesState.targetDate };
+      }
+
+      const habitsForPending = await getUserHabits(userId);
+      const pendingHabit = habitsForPending.find((habit) => habit.id === pendingMinutesState.habitId && !habit.isNegative);
+      if (!pendingHabit) {
+        await deletePendingHabitMinutesState(userId);
+        const response = 'No encontrÃ© el hÃ¡bito pendiente para cargar minutos. Decime de nuevo quÃ© hÃ¡bito querÃ©s registrar.';
+        await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
+        return { response, type: 'full', targetDate: pendingMinutesState.targetDate };
+      }
+
+      const extractionFromPending = {
+        targetDate: pendingMinutesState.targetDate,
+        goalProgress: [],
+        newHabits: [],
+        habitCompletions: [
+          {
+            habitName: pendingHabit.name,
+            status: 'positive',
+            durationMinutes: minutes,
+          },
+        ],
+      };
+
+      try {
+        await trackExtraction(userId, tz, extractionFromPending as any, inMsg.id, pendingMinutesState.targetDate);
+        await deletePendingHabitMinutesState(userId);
+        const response = `Listo, anotÃ© ${minutes} min en ${pendingHabit.name}.`;
+        await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response, extractedData: extractionFromPending });
+        return { response, extractedData: extractionFromPending, type: 'full', targetDate: pendingMinutesState.targetDate };
+      } catch (err) {
+        logger.error({ err, userId, habitId: pendingHabit.id }, 'Pending habit minutes tracking failed');
+        const response = 'No pude guardar esos minutos ahora. ProbÃ¡ de nuevo en un momento.';
+        await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
+        return { response, type: 'full', targetDate: pendingMinutesState.targetDate };
+      }
     }
   }
 
@@ -220,7 +366,7 @@ export async function processMessage(
         history,
       );
     } catch {
-      response = 'No pude generar el resumen ahora. Intentá de nuevo en un rato.';
+      response = 'No pude generar el resumen ahora. IntentÃ¡ de nuevo en un rato.';
     }
 
     await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
@@ -233,18 +379,18 @@ export async function processMessage(
       extraction = await extractData(text, goalsForExtraction, entryForContext as Record<string, unknown> | null, habitsForExtraction);
     } catch (err) {
       logger.error({ err }, 'Quick log extraction failed');
-      return { response: 'No entendí eso. ¿Me lo decís de otra forma?', type: 'quick-log', targetDate: contextDate };
+      return { response: 'No entendÃ­ eso. Â¿Me lo decÃ­s de otra forma?', type: 'quick-log', targetDate: contextDate };
     }
 
     if (!extraction.targetDate && targetDateHint.date) extraction.targetDate = targetDateHint.date;
 
     try {
-      await trackExtraction(userId, tz, extraction, inMsg.id);
+      await trackExtraction(userId, tz, extraction, inMsg.id, contextDate);
     } catch (err) {
       logger.error({ err }, 'Quick log tracking failed');
     }
 
-    const confirmation = 'Anotado ✓';
+    const confirmation = 'Anotado âœ“';
     await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: confirmation, extractedData: extraction });
     return { response: confirmation, extractedData: extraction, type: 'quick-log', targetDate: extraction.targetDate || contextDate };
   }
@@ -254,7 +400,7 @@ export async function processMessage(
     extraction = await extractData(text, goalsForExtraction, entryForContext as Record<string, unknown> | null, habitsForExtraction);
   } catch (err) {
     logger.error({ err }, 'Extraction failed');
-    const fallback = 'Te escuché, lo anoto';
+    const fallback = 'Te escuchÃ©, lo anoto';
     await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: fallback });
     return { response: fallback, type: 'full', targetDate: contextDate };
   }
@@ -264,14 +410,24 @@ export async function processMessage(
     try {
       assertEditableDate(extraction.targetDate, tz);
     } catch (err) {
-      const response = err instanceof Error ? err.message : 'Solo podés modificar hoy y los últimos 3 días';
+      const response = err instanceof Error ? err.message : 'Solo podÃ©s modificar hoy y los Ãºltimos 3 dÃ­as';
       await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
       return { response, extractedData: extraction, type: 'full', targetDate: extraction.targetDate };
     }
   }
 
+  for (const completion of extraction.habitCompletions ?? []) {
+    if (completion?.durationMinutes && completion.durationMinutes > 0) continue;
+    const matchedHabit = findHabitMatch(existingHabits, completion.habitName);
+    if (!matchedHabit || matchedHabit.isNegative || !(matchedHabit.targetMinutes && matchedHabit.targetMinutes > 0)) continue;
+    await upsertPendingHabitMinutesState(userId, matchedHabit.id, extraction.targetDate || contextDate);
+    const response = `Anotado ${matchedHabit.name}. Â¿CuÃ¡ntos minutos hiciste?`;
+    await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response });
+    return { response, extractedData: extraction, type: 'full', targetDate: extraction.targetDate || contextDate };
+  }
+
   try {
-    await trackExtraction(userId, tz, extraction, inMsg.id);
+    await trackExtraction(userId, tz, extraction, inMsg.id, contextDate);
   } catch (err) {
     logger.error({ err }, 'Tracking failed');
   }
@@ -302,9 +458,11 @@ export async function processMessage(
     );
   } catch (err) {
     logger.error({ err }, 'Coach response failed');
-    response = 'Te escuché, lo anoto. Seguí así.';
+    response = 'Te escuchÃ©, lo anoto. SeguÃ­ asÃ­.';
   }
 
   await logMessage({ userId, direction: 'out', contentType: 'text', rawContent: response, extractedData: extraction });
   return { response, extractedData: extraction, type: 'full', targetDate: extraction.targetDate || contextDate };
 }
+
+

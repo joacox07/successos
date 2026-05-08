@@ -71,7 +71,7 @@ function addUtcDays(date: Date, days: number) {
 
 export function getEditableDateWindow(timezone = config.timezone) {
   const today = parseDateKey(getTodayDate(timezone))!;
-  const oldest = addUtcDays(today, -3);
+  const oldest = addUtcDays(today, -7);
   return {
     today: normalizeDateKey(today),
     oldest: normalizeDateKey(oldest),
@@ -87,7 +87,7 @@ export function isEditableDate(value: string, timezone = config.timezone): boole
 
 export function assertEditableDate(value: string, timezone = config.timezone) {
   if (!isEditableDate(value, timezone)) {
-    throw new Error('Solo podés modificar hoy y los últimos 3 días');
+    throw new Error('Solo podes modificar hoy y los ultimos 7 dias');
   }
 }
 
@@ -112,11 +112,9 @@ const WEEKDAYS_ES: Record<string, number> = {
   lunes: 1,
   martes: 2,
   miercoles: 3,
-  miércoles: 3,
   jueves: 4,
   viernes: 5,
   sabado: 6,
-  sábado: 6,
 };
 
 export function resolveTargetDateFromText(
@@ -139,7 +137,7 @@ export function resolveTargetDateFromText(
     return { date: normalizeDateKey(addUtcDays(today, -1)), matched: true, ambiguous: false };
   }
 
-  const agoMatch = normalized.match(/\bhace\s+([1-3])\s+d[ií]as?\b/);
+  const agoMatch = normalized.match(/\bhace\s+([1-3])\s+dias?\b/);
   if (agoMatch) {
     return { date: normalizeDateKey(addUtcDays(today, -Number(agoMatch[1]))), matched: true, ambiguous: false };
   }
@@ -149,7 +147,7 @@ export function resolveTargetDateFromText(
     return { date: isoMatch[1], matched: true, ambiguous: false };
   }
 
-  const monthMatch = normalized.match(/\b(?:el\s+)?(\d{1,2})\s+de\s+([a-zñ]+)/);
+  const monthMatch = normalized.match(/\b(?:el\s+)?(\d{1,2})\s+de\s+([a-z]+)/);
   if (monthMatch) {
     const day = Number(monthMatch[1]);
     const month = MONTHS_ES[monthMatch[2]];
@@ -163,7 +161,7 @@ export function resolveTargetDateFromText(
     }
   }
 
-  const weekdayMatch = normalized.match(/\b(?:el\s+)?(domingo|lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado)\b/);
+  const weekdayMatch = normalized.match(/\b(?:el\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/);
   if (weekdayMatch) {
     const weekday = WEEKDAYS_ES[weekdayMatch[1]];
     if (weekday !== undefined) {
@@ -174,7 +172,9 @@ export function resolveTargetDateFromText(
   }
 
   const ambiguous =
-    /\b(me olvide|me olvid[eé]|colga(do|da)|no marque|no tild[eé]|no checke[eé]|te falto anotar|falto anotar|corrigi|corregi|ajusta|ajusta eso)\b/.test(normalized);
+    /\b(me olvide|colga(do|da)|no marque|no tilde|no checkee|te falto anotar|falto anotar|corrigi|corregi|ajusta|ajusta eso)\b/.test(normalized);
 
   return { date: null, matched: false, ambiguous };
 }
+
+

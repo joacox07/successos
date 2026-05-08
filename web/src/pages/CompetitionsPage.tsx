@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ResponsiveContainer,
   LineChart,
@@ -44,6 +44,50 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
       <p className="text-[11px] uppercase tracking-[0.22em] text-text-muted">{title}</p>
       {subtitle ? <p className="text-sm text-text-secondary">{subtitle}</p> : null}
     </div>
+  );
+}
+
+function CollapsibleCard({
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="bg-white/[0.02] p-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left md:px-5 md:py-5"
+      >
+        <SectionTitle title={title} subtitle={subtitle} />
+        <Icon
+          name="chevron-down"
+          size={16}
+          className={cn('mt-0.5 shrink-0 text-text-muted transition-transform duration-200', open && 'rotate-180 text-text-primary')}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-white/[0.06] px-4 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5">{children}</div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </Card>
   );
 }
 
@@ -223,6 +267,8 @@ export default function CompetitionsPage() {
   const [rivalA, setRivalA] = useState<number | null>(null);
   const [rivalB, setRivalB] = useState<number | null>(null);
   const [openHabitEditorId, setOpenHabitEditorId] = useState<number | null>(null);
+  const [inviteSectionOpen, setInviteSectionOpen] = useState(false);
+  const [sharedHabitsSectionOpen, setSharedHabitsSectionOpen] = useState(false);
   const [editingHabitId, setEditingHabitId] = useState<number | null>(null);
   const [editingHabitName, setEditingHabitName] = useState('');
   const [editingHabitDescription, setEditingHabitDescription] = useState('');
@@ -1135,9 +1181,14 @@ export default function CompetitionsPage() {
                     </button>
                   </div>
 
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                  <CollapsibleCard
+                    title="Invitar rival"
+                    subtitle="Buscá por @username y validá antes de mandar la invitación."
+                    open={inviteSectionOpen}
+                    onToggle={() => setInviteSectionOpen((current) => !current)}
+                  >
+                    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                     <Card className="space-y-4 bg-white/[0.02]">
-                      <SectionTitle title="Invitar rival" subtitle="Buscá por @username y validá antes de mandar la invitación." />
                       <label className="block space-y-2">
                         <span className="text-xs font-semibold text-text-secondary">@username</span>
                         <input
@@ -1219,15 +1270,20 @@ export default function CompetitionsPage() {
                         })}
                       </div>
                     </Card>
-                  </div>
+                    </div>
+                  </CollapsibleCard>
                 </Card>
 
                 {view === 'summary' ? renderSummaryView() : null}
                 {view === 'habit' ? renderHabitView() : null}
                 {view === 'rival' ? renderRivalView() : null}
 
-                <Card className="space-y-5">
-                  <SectionTitle title="Editar hábitos compartidos" subtitle="Definí reglas de puntos y elegí qué hábitos querés unificar con tu tracker personal." />
+                <CollapsibleCard
+                  title="Editar hábitos compartidos"
+                  subtitle="Definí reglas de puntos y elegí qué hábitos querés unificar con tu tracker personal."
+                  open={sharedHabitsSectionOpen}
+                  onToggle={() => setSharedHabitsSectionOpen((current) => !current)}
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={handleSyncAllHabitsToProfile}
@@ -1253,14 +1309,18 @@ export default function CompetitionsPage() {
                               <p className="mt-1 text-xs text-text-secondary">{habit.description || durationConfigLabel(habit)}</p>
                               <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                                 <span className="rounded-xl bg-white/[0.04] px-2 py-1 text-text-muted">
-                                  {scoringModeLabel(habit.scoringMode)}
+                                  {habit.kind === 'duration' ? durationConfigLabel(habit) : scoringModeLabel(habit.scoringMode)}
                                 </span>
-                                <span className="rounded-xl bg-accent-mint/[0.08] px-2 py-1 text-accent-mint">
-                                  +{habit.pointsPositive}
-                                </span>
-                                <span className="rounded-xl bg-accent-coral/[0.08] px-2 py-1 text-accent-coral">
-                                  -{habit.pointsNegative}
-                                </span>
+                                {habit.kind === 'event' ? (
+                                  <>
+                                    <span className="rounded-xl bg-accent-mint/[0.08] px-2 py-1 text-accent-mint">
+                                      +{habit.pointsPositive}
+                                    </span>
+                                    <span className="rounded-xl bg-accent-coral/[0.08] px-2 py-1 text-accent-coral">
+                                      -{habit.pointsNegative}
+                                    </span>
+                                  </>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -1289,44 +1349,80 @@ export default function CompetitionsPage() {
                                   </button>
                                 ))}
                               </div>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  onClick={() => handleLog(habit.id, 'positive')}
-                                  disabled={busyKey === `log-${habit.id}-positive`}
-                                  className="rounded-xl bg-accent-mint/15 px-3 py-2 text-xs text-accent-mint"
-                                >
-                                  Éxito
-                                </button>
-                                {canLogNegative(habit) ? (
+                              {habit.kind === 'duration' ? (
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={durationInputs[habit.id] ?? ''}
+                                      onChange={(event) => setDurationInputs((current) => ({ ...current, [habit.id]: event.target.value }))}
+                                      placeholder="Minutos"
+                                      className="w-28 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-text-primary outline-none"
+                                    />
+                                    <button
+                                      onClick={() => handleLogDuration(habit.id)}
+                                      disabled={busyKey === `log-duration-${habit.id}`}
+                                      className="rounded-xl bg-accent-mint/15 px-3 py-2 text-xs text-accent-mint disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      Registrar minutos
+                                    </button>
+                                    <button
+                                      onClick={() => startHabitEdit(habit)}
+                                      className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-text-secondary"
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteHabit(habit.id)}
+                                      disabled={busyKey === `delete-habit-${habit.id}`}
+                                      className="rounded-xl border border-accent-coral/20 bg-accent-coral/10 px-3 py-2 text-xs text-accent-coral disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      Borrar
+                                    </button>
+                                  </div>
+                                  <p className="text-[11px] text-text-muted">Bloques: {durationConfigLabel(habit)}</p>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
                                   <button
-                                    onClick={() => handleLog(habit.id, 'negative')}
-                                    disabled={busyKey === `log-${habit.id}-negative`}
-                                    className="rounded-xl bg-accent-coral/15 px-3 py-2 text-xs text-accent-coral"
+                                    onClick={() => handleLog(habit.id, 'positive')}
+                                    disabled={busyKey === `log-${habit.id}-positive`}
+                                    className="rounded-xl bg-accent-mint/15 px-3 py-2 text-xs text-accent-mint"
                                   >
-                                    Recaída
+                                    Éxito
                                   </button>
-                                ) : null}
-                                <button
-                                  onClick={() => handleLog(habit.id, 'clear')}
-                                  disabled={busyKey === `log-${habit.id}-clear`}
-                                  className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-text-secondary"
-                                >
-                                  Limpiar
-                                </button>
-                                <button
-                                  onClick={() => startHabitEdit(habit)}
-                                  className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-text-secondary"
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteHabit(habit.id)}
-                                  disabled={busyKey === `delete-habit-${habit.id}`}
-                                  className="rounded-xl border border-accent-coral/20 bg-accent-coral/10 px-3 py-2 text-xs text-accent-coral disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                  Borrar
-                                </button>
-                              </div>
+                                  {canLogNegative(habit) ? (
+                                    <button
+                                      onClick={() => handleLog(habit.id, 'negative')}
+                                      disabled={busyKey === `log-${habit.id}-negative`}
+                                      className="rounded-xl bg-accent-coral/15 px-3 py-2 text-xs text-accent-coral"
+                                    >
+                                      Recaída
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    onClick={() => handleLog(habit.id, 'clear')}
+                                    disabled={busyKey === `log-${habit.id}-clear`}
+                                    className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-text-secondary"
+                                  >
+                                    Limpiar
+                                  </button>
+                                  <button
+                                    onClick={() => startHabitEdit(habit)}
+                                    className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-text-secondary"
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteHabit(habit.id)}
+                                    disabled={busyKey === `delete-habit-${habit.id}`}
+                                    className="rounded-xl border border-accent-coral/20 bg-accent-coral/10 px-3 py-2 text-xs text-accent-coral disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    Borrar
+                                  </button>
+                                </div>
+                              )}
 
                               {editingHabitId === habit.id ? (
                                 <div className="mt-4 space-y-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3">
@@ -1564,7 +1660,7 @@ export default function CompetitionsPage() {
                       </button>
                     </Card>
                   </div>
-                </Card>
+                </CollapsibleCard>
               </>
             )}
           </div>

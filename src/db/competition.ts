@@ -1712,3 +1712,78 @@ export function logCompetitionHabitDuration(input: {
     minutesLogged: result.minutesLogged,
   };
 }
+
+export function recomputeLinkedCompetitionForDay(input: {
+  userId: number;
+  date: string;
+  personalHabitIds: number[];
+}) {
+  const sqlite = sqliteOrThrow();
+  const now = new Date().toISOString();
+  const uniquePersonal = Array.from(new Set(input.personalHabitIds.filter((id) => Number.isFinite(id) && id > 0)));
+  if (uniquePersonal.length === 0) return [];
+
+  const results: Array<{ competitionHabitId: number; kind: CompetitionHabitKind; status?: CompetitionLogStatus; minutesLogged?: number; points: number }> = [];
+
+  for (const personalHabitId of uniquePersonal) {
+    const links = sqlite.prepare(
+      `SELECT ch.id as competitionHabitId,
+              ch.kind as kind,
+              ch.scoring_mode as scoringMode,
+              ch.points_positive as pointsPositive,
+              ch.points_negative as pointsNegative,
+              ch.minutes_per_block as minutesPerBlock,
+              ch.points_per_block as pointsPerBlock
+       FROM competition_habit_links chl
+       JOIN competition_habits ch ON ch.id = chl.competition_habit_id
+       WHERE chl.personal_habit_id = ? AND chl.user_id = ? AND ch.active = 1`
+    ).all(personalHabitId, input.userId) as Array<{
+      competitionHabitId: number;
+      kind?: string | null;
+      scoringMode: CompetitionScoringMode;
+      pointsPositive: number;
+      pointsNegative: number;
+      minutesPerBlock?: number | null;
+      pointsPerBlock?: number | null;
+    }>;
+
+    for (const link of links) {
+      const kind = normalizeCompetitionKind(link.kind) as CompetitionHabitKind;
+      if (kind === 'duration') {
+        const personalRow = sqlite.prepare(
+          `SELECT minutes_logged as minutesLogged
+           FROM habit_logs WHERE habit_id = ? AND user_id = ? AND date = ? LIMIT 1`
+        ).get(personalHabitId, input.userId, input.date) as { minutesLogged?: number | null } | undefined;
+        const minutesLogged = Math.max(0, personalRow?.minutesLogged ?? 0);
+        const setResult = addCompetitionHabitMinutes(link.competitionHabitId, input.userId, input.date, minutesLogged, 'set');
+        const points = pointsForDuration(setResult.minutesLogged, link.minutesPerBlock ?? null, link.pointsPerBlock ?? null);
+        sqlite.prepare(
+          `UPDATE competition_habit_logs
+           SET points_awarded = ?, updated_at = ?
+           WHERE competition_habit_id = ? AND user_id = ? AND date = ?`
+        ).run(points, now, link.competitionHabitId, input.userId, input.date);
+        results.push({ competitionHabitId: link.competitionHabitId, kind, minutesLogged: setResult.minutesLogged, points });
+        continue;
+      }
+
+      const personalRow = sqlite.prepare(
+        `SELECT status, completed
+         FROM habit_logs WHERE habit_id = ? AND user_id = ? AND date = ? LIMIT 1`
+      ).get(personalHabitId, input.userId, input.date) as { status?: string | null; completed?: number | null } | undefined;
+      const rawStatus = statusFromPersonalRow(personalRow);
+      setCompetitionHabitStatus(link.competitionHabitId, input.userId, input.date, rawStatus);
+      const effective = effectiveEventStatus({ kind: 'event', scoringMode: link.scoringMode } as any, rawStatus);
+      const points = pointsForEvent(link.scoringMode, link.pointsPositive, link.pointsNegative, effective);
+      if (rawStatus !== 'clear') {
+        sqlite.prepare(
+          `UPDATE competition_habit_logs
+           SET points_awarded = ?, updated_at = ?
+           WHERE competition_habit_id = ? AND user_id = ? AND date = ?`
+        ).run(points, now, link.competitionHabitId, input.userId, input.date);
+      }
+      results.push({ competitionHabitId: link.competitionHabitId, kind, status: effective, points });
+    }
+  }
+
+  return results;
+}

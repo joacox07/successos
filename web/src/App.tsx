@@ -1,10 +1,16 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { isAuthenticated, isAdminToken, isProfileComplete } from '@/lib/api';
+import { api, isAuthenticated, isAdminToken, isProfileComplete } from '@/lib/api';
+import { useApi } from '@/hooks/useApi';
 import { Background } from '@/components/Background';
 import { BottomNav } from '@/components/BottomNav';
+import Icon from '@/components/Icon';
+import ChatCheckin from '@/components/ChatCheckin';
+import DailyCheckin from '@/components/DailyCheckin';
+import { CheckinFab } from '@/components/CheckinFab';
 import DashboardPage from '@/pages/DashboardPage';
 import MetricsPage from '@/pages/MetricsPage';
 import GoalsPage from '@/pages/GoalsPage';
@@ -18,6 +24,13 @@ import HabitWidgetPage from '@/pages/HabitWidgetPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { AdminPage } from '@/pages/AdminPage';
 import { SetupPage } from '@/pages/SetupPage';
+
+function toISODate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
@@ -45,6 +58,23 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function AppShell() {
   const location = useLocation();
+  const [showCheckin, setShowCheckin] = useState(false);
+  const [checkinMode, setCheckinMode] = useState<'chat' | 'wizard'>('chat');
+  const { data: profileData } = useApi(() => api.getProfile());
+
+  const quickTargetDate = (() => {
+    const base = new Date();
+    if (profileData?.defaultCheckinDayMode === 'previous_day') {
+      base.setDate(base.getDate() - 1);
+    }
+    return toISODate(base);
+  })();
+  const checkinTargetLabel = profileData?.defaultCheckinDayMode === 'previous_day' ? 'ayer' : 'hoy';
+
+  const handleCheckinComplete = () => {
+    setShowCheckin(false);
+    window.dispatchEvent(new Event('checkin-completed'));
+  };
 
   return (
     <>
@@ -79,7 +109,60 @@ function AppShell() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <CheckinFab
+        routeKey={location.pathname}
+        onOpenChat={() => {
+          setCheckinMode('chat');
+          setShowCheckin(true);
+        }}
+        onOpenQuick={() => {
+          setCheckinMode('wizard');
+          setShowCheckin(true);
+        }}
+      />
       <BottomNav />
+      {showCheckin && createPortal(
+        <AnimatePresence>
+          <motion.div
+            key="checkin-overlay-global"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[80] bg-bg-primary"
+          >
+            <div className="h-full px-4 pt-4 pb-4 max-w-lg mx-auto w-full flex flex-col">
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <div>
+                  <h2 className="text-lg font-bold text-text-primary font-[Sora]">
+                    {checkinMode === 'chat' ? 'Coach SuccessOS' : (checkinTargetLabel === 'ayer' ? 'Check-in de ayer' : 'Check-in de hoy')}
+                  </h2>
+                  <button
+                    onClick={() => setCheckinMode(checkinMode === 'chat' ? 'wizard' : 'chat')}
+                    className="text-[11px] text-accent-violet hover:text-accent-violet/80 transition-colors mt-0.5"
+                  >
+                    {checkinMode === 'chat' ? 'Cambiar a modo rapido' : 'Cambiar a chat'}
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowCheckin(false)}
+                  className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0">
+                {checkinMode === 'chat' ? (
+                  <ChatCheckin onComplete={handleCheckinComplete} />
+                ) : (
+                  <DailyCheckin targetDate={quickTargetDate} mode="quick" onComplete={handleCheckinComplete} />
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }

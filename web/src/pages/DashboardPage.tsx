@@ -1,5 +1,4 @@
-import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/hooks/useApi';
@@ -7,8 +6,6 @@ import { api } from '@/lib/api';
 import type { DashboardData, MetricsData, GoalSummary, MetricEntry, PatternSummary } from '@/lib/api';
 import { cn, formatDate, formatDateFull, categoryIcon, categoryColor } from '@/lib/utils';
 import Icon from '@/components/Icon';
-import DailyCheckin from '@/components/DailyCheckin';
-import ChatCheckin from '@/components/ChatCheckin';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { HabitStreakWidget } from '@/components/HabitStreakWidget';
 import { DashboardCustomizer } from '@/components/DashboardCustomizer';
@@ -190,13 +187,6 @@ function getWeekDayLabel(dateStr: string) {
   const d = new Date(dateStr + 'T12:00:00');
   const day = d.getDay(); // 0=Sun
   return WEEK_DAYS[day === 0 ? 6 : day - 1];
-}
-
-function toISODate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 function scoreColor(score: number | null): string {
@@ -416,9 +406,6 @@ function DayInsight({ patterns, onTap }: { patterns: PatternSummary[]; onTap: ()
 export default function DashboardPage() {
   const { data, loading, refetch } = useApi<DashboardData>(() => api.getDashboard());
   const { data: metricsData } = useApi<MetricsData>(() => api.getMetrics('week'));
-  const { data: profileData } = useApi(() => api.getProfile());
-  const [showCheckin, setShowCheckin] = useState(false);
-  const [checkinMode, setCheckinMode] = useState<'chat' | 'wizard'>('chat');
   const { config, toggleHabitPin } = useDashboardConfig();
   const [showCustomizer, setShowCustomizer] = useState(false);
   const { data: habitsData, refetch: refetchHabits } = useApi(() => api.getHabits());
@@ -433,6 +420,14 @@ export default function DashboardPage() {
     return () => window.removeEventListener('habits-changed', onHabitsChanged);
   }, []);
 
+  const refetchDashboardRef = useRef(refetch);
+  refetchDashboardRef.current = refetch;
+  useEffect(() => {
+    function onCheckinCompleted() { refetchDashboardRef.current(); }
+    window.addEventListener('checkin-completed', onCheckinCompleted);
+    return () => window.removeEventListener('checkin-completed', onCheckinCompleted);
+  }, []);
+
   const entry = data?.entry as Record<string, number | null> | null;
   const hasEntryToday = entry && Object.values(entry).some((v) => v !== null);
 
@@ -443,17 +438,6 @@ export default function DashboardPage() {
   const totalCount = allHabits.length;
   const timeSlot = getTimeSlot();
   const greeting = getGreeting();
-  const quickTargetDate = useMemo(() => {
-    const base = new Date();
-    if (profileData?.defaultCheckinDayMode === 'previous_day') {
-      base.setDate(base.getDate() - 1);
-    }
-    return toISODate(base);
-  }, [profileData?.defaultCheckinDayMode]);
-  const { data: quickCheckinData, refetch: refetchQuickCheckin } = useApi(() => api.getCheckinByDate(quickTargetDate));
-  const quickEntry = quickCheckinData?.entry as Record<string, number | null> | null | undefined;
-  const hasQuickEntry = !!quickEntry && Object.values(quickEntry).some((value) => value !== null);
-  const checkinTargetLabel = profileData?.defaultCheckinDayMode === 'previous_day' ? 'ayer' : 'hoy';
 
   // Apply dashboard config: filter hidden goals, sort by saved order
   const configuredGoals = (() => {
@@ -505,30 +489,8 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ── CTA ── */}
-      {!loading && !hasQuickEntry && (
-        <motion.div variants={item}>
-          <button
-            onClick={() => setShowCheckin(true)}
-            className="w-full py-5 bg-bg-card backdrop-blur-[30px] border-2 border-accent-mint/30 hover:border-accent-mint/60 font-display tracking-[0.2em] text-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 rounded-none relative overflow-hidden group shadow-sm shadow-accent-mint/5"
-            style={{ color: 'rgb(var(--color-accent-primary))' }}
-          >
-            <Icon name="clipboard" size={24} />
-            <span>{checkinTargetLabel === 'ayer' ? 'REGISTRAR AYER' : 'REGISTRAR MI DIA'}</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-text-primary/[0.05] to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-          </button>
-        </motion.div>
-      )}
-      {!loading && hasQuickEntry && (
-        <motion.div variants={item}>
-          <button
-            onClick={() => setShowCheckin(true)}
-            className="w-full py-3 bg-transparent border border-dashed border-border-primary text-text-secondary font-medium text-xs font-mono tracking-widest uppercase hover:bg-bg-card active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-          >
-            <Icon name="check" size={14} />
-            {checkinTargetLabel === 'ayer' ? 'Editar check-in de ayer' : 'Editar check-in de hoy'}
-          </button>
-        </motion.div>
-      )}
+      
+      
 
       {/* ── Pending habits (morning/afternoon, not all done) ── */}
       {!loading && totalCount > 0 && completedCount < totalCount && timeSlot !== 'evening' && (
@@ -629,64 +591,6 @@ export default function DashboardPage() {
           </div>
         )}
       </motion.div>
-
-      {/* ---- Check-in Overlay (portal to body) ---- */}
-      {showCheckin && createPortal(
-        <AnimatePresence>
-          <motion.div
-            key="checkin-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-bg-primary"
-          >
-            <div className="h-full px-4 pt-4 pb-4 max-w-lg mx-auto w-full flex flex-col">
-              <div className="flex items-center justify-between mb-3 shrink-0">
-                <div>
-                  <h2 className="text-lg font-bold text-text-primary font-[Sora]">
-                    {checkinMode === 'chat' ? 'Coach SuccessOS' : (checkinTargetLabel === 'ayer' ? 'Check-in de ayer' : 'Check-in de hoy')}
-                  </h2>
-                  <button
-                    onClick={() => setCheckinMode(checkinMode === 'chat' ? 'wizard' : 'chat')}
-                    className="text-[11px] text-accent-violet hover:text-accent-violet/80 transition-colors mt-0.5"
-                  >
-                    {checkinMode === 'chat' ? 'Cambiar a modo rapido' : 'Cambiar a chat'}
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowCheckin(false)}
-                  className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  <Icon name="x" size={16} />
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
-                {checkinMode === 'chat' ? (
-                  <ChatCheckin
-                    onComplete={() => {
-                      setShowCheckin(false);
-                      refetch();
-                      refetchQuickCheckin();
-                    }}
-                  />
-                ) : (
-                  <DailyCheckin
-                    targetDate={quickTargetDate}
-                    mode="quick"
-                    onComplete={() => {
-                      setShowCheckin(false);
-                      refetch();
-                      refetchQuickCheckin();
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>,
-        document.body
-      )}
 
       {/* ---- Dashboard Customizer ---- */}
       <DashboardCustomizer

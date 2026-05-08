@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Icon from '@/components/Icon';
 import { api } from '@/lib/api';
@@ -98,47 +98,78 @@ function getSlideVariants(dir: number) {
 }
 
 function StepSleep({ data, update }: StepProps) {
+  const qualityValue = data.sleepQuality ?? 0;
   return (
     <div className="w-full max-w-sm space-y-6 text-center">
-      <div className="flex justify-center"><Icon name="sleep" size={60} className="text-accent-mint" /></div>
-      <div>
-        <h2 className="text-2xl font-display uppercase tracking-tight text-text-primary">Sueno</h2>
-        <p className="mt-2 text-xs text-text-muted">Completa esto cuando te resulte comodo. Las horas son opcionales.</p>
+      <div className="flex justify-center">
+        <Icon name="sleep" size={44} className="text-accent-coral" />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        <h2 className="text-2xl font-display uppercase tracking-tight text-text-primary">Sueño</h2>
+        <p className="text-xs text-text-muted">Opcional. Podés completarlo mañana.</p>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono uppercase tracking-widest text-text-secondary">Calidad</span>
+          <span className="text-sm font-mono text-text-primary">{qualityValue}/10</span>
+        </div>
         <input
           type="range"
-          min={1}
+          min={0}
           max={10}
           step={1}
-          value={data.sleepQuality ?? 5}
+          value={qualityValue}
           onChange={(e) => update('sleepQuality', Number(e.target.value))}
-          className="w-full accent-[#4ade80]"
+          className="w-full accent-[#fb7185]"
         />
-        <div className="flex justify-between text-xs font-mono text-text-muted">
-          <span>1</span>
-          <span className="text-accent-mint">{data.sleepQuality ?? 5}</span>
-          <span>10</span>
+        <div className="flex justify-between text-[11px] font-mono text-text-muted">
+          <span>Malo</span>
+          <span>Normal</span>
+          <span>Excelente</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1.5 block text-xs text-text-muted">Me acoste</label>
-          <input
-            type="time"
-            value={data.bedtime}
-            onChange={(e) => update('bedtime', e.target.value)}
-            className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.06] px-3 text-center text-sm text-text-primary [color-scheme:dark]"
-          />
+      <div className="grid grid-cols-2 gap-3 text-left">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-mono uppercase tracking-widest text-text-secondary">Me acosté</label>
+          <div className="flex h-12 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.06] px-3">
+            <Icon name="clock" size={16} className="text-text-muted" />
+            <input
+              type="time"
+              value={data.bedtime}
+              onChange={(e) => update('bedtime', e.target.value)}
+              className="h-10 w-full bg-transparent text-sm text-text-primary outline-none [color-scheme:dark]"
+            />
+          </div>
+          {data.bedtime && (
+            <button
+              type="button"
+              onClick={() => update('bedtime', '')}
+              className="text-[11px] font-mono text-text-muted hover:text-text-secondary"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
-        <div>
-          <label className="mb-1.5 block text-xs text-text-muted">Me desperte</label>
-          <input
-            type="time"
-            value={data.wakeTime}
-            onChange={(e) => update('wakeTime', e.target.value)}
-            className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.06] px-3 text-center text-sm text-text-primary [color-scheme:dark]"
-          />
+        <div className="space-y-1.5">
+          <label className="block text-xs font-mono uppercase tracking-widest text-text-secondary">Me desperté</label>
+          <div className="flex h-12 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.06] px-3">
+            <Icon name="clock" size={16} className="text-text-muted" />
+            <input
+              type="time"
+              value={data.wakeTime}
+              onChange={(e) => update('wakeTime', e.target.value)}
+              className="h-10 w-full bg-transparent text-sm text-text-primary outline-none [color-scheme:dark]"
+            />
+          </div>
+          {data.wakeTime && (
+            <button
+              type="button"
+              onClick={() => update('wakeTime', '')}
+              className="text-[11px] font-mono text-text-muted hover:text-text-secondary"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -377,7 +408,7 @@ function StepSummary({ data, update, goTo, steps, habits, habitsStepIndex }: Ste
         summaryRows.push({ icon: 'exercise', label: 'Ejercicio', value: data.exerciseDone !== null ? (data.exerciseDone ? `Si${data.exerciseDuration ? ` (${data.exerciseDuration}m)` : ''}` : 'No') : null, step: index });
         break;
       case 'mood-energy':
-        summaryRows.push({ icon: 'mood', label: 'Mood y energia', value: data.mood !== null || data.energyLevel !== null ? `${data.mood !== null ? `${data.mood}/10 mood` : 'Sin mood'}${data.energyLevel !== null ? ` � ${data.energyLevel}/10 energia` : ''}` : null, step: index });
+        summaryRows.push({ icon: 'mood', label: 'Mood y energia', value: data.mood !== null || data.energyLevel !== null ? `${data.mood !== null ? `${data.mood}/10 mood` : 'Sin mood'}${data.energyLevel !== null ? ` · ${data.energyLevel}/10 energia` : ''}` : null, step: index });
         break;
       case 'sleep':
         summaryRows.push({ icon: 'sleep', label: 'Sueno', value: data.sleepQuality !== null ? `${data.sleepQuality}/10` : null, step: index });
@@ -449,7 +480,8 @@ export default function DailyCheckin({ onComplete, initialData, targetDate, init
   const totalSteps = steps.length;
 
   useEffect(() => {
-    if (!initialData) {
+    const shouldFetchEntry = mode === 'edit' || !initialData;
+    if (shouldFetchEntry) {
       const request = targetDate ? api.getCheckinByDate(targetDate) : api.getCheckinToday();
       request.then((res) => {
         if (res.entry) setData({ ...defaultState, ...res.entry } as CheckinState);
@@ -464,8 +496,10 @@ export default function DailyCheckin({ onComplete, initialData, targetDate, init
         initState[habit.id] = { completed: habit.completed, status: habit.status || 'clear', minutes: habit.minutesLogged || 0 };
       });
       setInitialHabitState(initState);
-      return;
     }
+
+    const shouldFetchHabits = mode === 'edit' || !initialHabits;
+    if (!shouldFetchHabits) return;
 
     api.getHabits(targetDate).then((res) => {
       const mapped: HabitItem[] = res.habits.map((habit: any) => ({
@@ -486,7 +520,7 @@ export default function DailyCheckin({ onComplete, initialData, targetDate, init
       });
       setInitialHabitState(initState);
     }).catch(() => {});
-  }, [initialData, initialHabits, targetDate]);
+  }, [initialData, initialHabits, targetDate, mode]);
 
   const update = useCallback(<K extends keyof CheckinState>(key: K, value: CheckinState[K]) => {
     setData((prev) => ({ ...prev, [key]: value }));
@@ -552,9 +586,31 @@ export default function DailyCheckin({ onComplete, initialData, targetDate, init
           })
       );
 
+      try {
+        const res = await api.getHabits(targetDate);
+        const mapped: HabitItem[] = res.habits.map((habit: any) => ({
+          id: habit.id,
+          name: habit.name,
+          emoji: habit.emoji,
+          category: habit.category,
+          completed: res.today?.[habit.id] ?? false,
+          isNegative: !!habit.isNegative,
+          targetMinutes: habit.targetMinutes ?? null,
+          minutesLogged: res.minutes?.[habit.id] ?? 0,
+          status: res.status?.[habit.id] ?? 'clear',
+        }));
+        setHabits(mapped);
+        const initState: Record<number, { completed: boolean; status: string; minutes: number }> = {};
+        mapped.forEach((habit) => {
+          initState[habit.id] = { completed: habit.completed, status: habit.status || 'clear', minutes: habit.minutesLogged || 0 };
+        });
+        setInitialHabitState(initState);
+      } catch {}
+
       setSaved(true);
       try {
         const res = targetDate ? await api.getCheckinByDate(targetDate) : await api.getCheckinToday();
+        if (res.entry) setData({ ...defaultState, ...res.entry } as CheckinState);
         setStreak(res.streak);
       } catch {}
       window.setTimeout(() => onComplete?.(), 1800);
@@ -616,7 +672,7 @@ export default function DailyCheckin({ onComplete, initialData, targetDate, init
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-y-auto pb-4">
+      <div className="relative min-h-0 flex-1 overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div key={steps[step]?.id} variants={variants} initial="enter" animate="center" exit="exit" transition={slideTransition} className="flex flex-col items-center px-4 pb-4">
             {renderStep(steps[step])}
@@ -624,7 +680,10 @@ export default function DailyCheckin({ onComplete, initialData, targetDate, init
         </AnimatePresence>
       </div>
 
-      <div className="sticky bottom-0 z-10 mt-2 border-t border-white/[0.06] bg-bg-primary/95 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
+      <div
+        className="sticky z-10 mt-2 border-t border-white/[0.06] bg-bg-primary/95 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl"
+        style={{ bottom: 'calc(5.75rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         {error ? <p className="mb-3 text-center text-sm text-accent-coral">{error}</p> : null}
         {step < totalSteps - 1 ? (
           <button onClick={next} className="min-h-[48px] w-full rounded-2xl bg-accent-mint/20 py-3.5 text-sm font-semibold text-accent-mint transition-all hover:bg-accent-mint/30 active:scale-[0.98]">Siguiente</button>

@@ -1,6 +1,6 @@
 import { eq, and, gte, lte, desc, asc, sql, ne } from 'drizzle-orm';
 import { getDb } from './client.js';
-import { users, profiles, goals, dailyEntries, goalLogs, messages, patterns, reports, onboardingState, sentCheckins, authTokens, habits, habitLogs, studySessions, flashcardDecks, flashcards, studySubjects, calendarTokens } from './schema.js';
+import { users, profiles, goals, dailyEntries, goalLogs, messages, patterns, reports, onboardingState, pendingHabitMinutesState, sentCheckins, authTokens, habits, habitLogs, studySessions, flashcardDecks, flashcards, studySubjects, calendarTokens } from './schema.js';
 
 // ── Users ──
 
@@ -8,6 +8,16 @@ export async function findUserByPhone(phone: string) {
   const db = getDb();
   const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   return user ?? null;
+}
+
+export async function getUserDefaultCheckinDayMode(userId: number): Promise<'today' | 'previous_day'> {
+  const db = getDb();
+  const [user] = await db
+    .select({ defaultCheckinDayMode: users.defaultCheckinDayMode })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return user?.defaultCheckinDayMode === 'previous_day' ? 'previous_day' : 'today';
 }
 
 export async function createUser(phone: string) {
@@ -61,6 +71,14 @@ export async function getActiveGoals(userId: number) {
 export async function getAllGoals(userId: number) {
   const db = getDb();
   return db.select().from(goals).where(eq(goals.userId, userId));
+}
+
+export async function getGoalByIdForUser(goalId: number, userId: number) {
+  const db = getDb();
+  const [goal] = await db.select().from(goals)
+    .where(and(eq(goals.id, goalId), eq(goals.userId, userId)))
+    .limit(1);
+  return goal ?? null;
 }
 
 export async function updateGoal(goalId: number, data: Partial<typeof goals.$inferInsert>) {
@@ -217,6 +235,33 @@ export async function upsertOnboardingState(userId: number, step: number, data: 
 export async function deleteOnboardingState(userId: number) {
   const db = getDb();
   await db.delete(onboardingState).where(eq(onboardingState.userId, userId));
+}
+
+// ── Pending Habit Minutes State ──
+
+export async function getPendingHabitMinutesState(userId: number) {
+  const db = getDb();
+  const [state] = await db.select().from(pendingHabitMinutesState)
+    .where(eq(pendingHabitMinutesState.userId, userId))
+    .limit(1);
+  return state ?? null;
+}
+
+export async function upsertPendingHabitMinutesState(userId: number, habitId: number, targetDate: string) {
+  const db = getDb();
+  const existing = await getPendingHabitMinutesState(userId);
+  if (existing) {
+    await db.update(pendingHabitMinutesState)
+      .set({ habitId, targetDate, updatedAt: new Date().toISOString() })
+      .where(eq(pendingHabitMinutesState.userId, userId));
+    return;
+  }
+  await db.insert(pendingHabitMinutesState).values({ userId, habitId, targetDate });
+}
+
+export async function deletePendingHabitMinutesState(userId: number) {
+  const db = getDb();
+  await db.delete(pendingHabitMinutesState).where(eq(pendingHabitMinutesState.userId, userId));
 }
 
 // ── Sent Check-ins ──
@@ -423,6 +468,26 @@ export async function toggleHabitLog(habitId: number, userId: number, date: stri
   const nextStatus = existing?.status === activeStatus ? 'clear' : activeStatus;
   const result = await setHabitLogStatus(habitId, userId, date, nextStatus as 'positive' | 'negative' | 'clear');
   return result.marked;
+}
+
+export type PersonalHabitEventStatus = 'positive' | 'negative' | 'clear';
+export type PersonalHabitMinutesPatch = { op: 'add' | 'set'; value: number };
+export type PersonalHabitPatch = { eventStatus?: PersonalHabitEventStatus; minutes?: PersonalHabitMinutesPatch };
+
+export async function mutatePersonalHabitForDate(input: {
+  habitId: number;
+  userId: number;
+  date: string;
+  patch: PersonalHabitPatch;
+}) {
+  const { habitId, userId, date, patch } = input;
+  if (patch.minutes) {
+    return addHabitLogMinutes(habitId, userId, date, patch.minutes.value, patch.minutes.op);
+  }
+  if (patch.eventStatus) {
+    return setHabitLogStatus(habitId, userId, date, patch.eventStatus);
+  }
+  return null;
 }
 
 export async function getHabitLogs(habitId: number, startDate: string, endDate: string) {

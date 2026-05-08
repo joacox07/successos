@@ -789,7 +789,7 @@ export default function DiaryPage() {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 overflow-y-auto bg-bg-primary"
           >
-            <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+            <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4">
               <div className="sticky top-0 z-20 mb-3 flex items-center justify-between border-b border-white/[0.06] bg-bg-primary/95 pb-3 backdrop-blur-xl">
                 <div>
                   <h2 className="text-lg font-bold text-text-primary">Editar {formatDateFull(dateStr)}</h2>

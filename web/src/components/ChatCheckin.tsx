@@ -137,6 +137,8 @@ export default function ChatCheckin({ onComplete }: Props) {
   const [currentEntry, setCurrentEntry] = useState<Record<string, any> | null>(null);
   const [streak, setStreak] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [undoToken, setUndoToken] = useState<string | null>(null);
+  const [undoBusy, setUndoBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const voice = useVoiceRecorder();
@@ -183,9 +185,30 @@ export default function ChatCheckin({ onComplete }: Props) {
       }]);
       if (res.currentEntry !== null) setCurrentEntry(res.currentEntry);
       if (res.streak > 0) setStreak(res.streak);
+      setUndoToken(res.undoToken || null);
     }
     setSending(false);
   }, []);
+
+  const handleUndo = useCallback(async () => {
+    if (!undoToken || undoBusy) return;
+    setUndoBusy(true);
+    setError(null);
+    try {
+      const result = await api.undoAssistantAction(undoToken);
+      setMessages(prev => [...prev, {
+        id: `ai-undo-${Date.now()}`,
+        direction: 'out',
+        content: result.message,
+        timestamp: new Date().toISOString(),
+      }]);
+      setUndoToken(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo deshacer');
+    } finally {
+      setUndoBusy(false);
+    }
+  }, [undoToken, undoBusy]);
 
   // ── Send text ──
   const sendText = useCallback(async () => {
@@ -374,6 +397,18 @@ export default function ChatCheckin({ onComplete }: Props) {
       {/* ── Error ── */}
       {error && (
         <p className="text-accent-coral text-xs text-center py-1">{error}</p>
+      )}
+
+      {undoToken && (
+        <div className="pb-2">
+          <button
+            onClick={handleUndo}
+            disabled={undoBusy}
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2 text-xs text-text-secondary hover:bg-white/[0.08] disabled:opacity-50"
+          >
+            {undoBusy ? 'Deshaciendo...' : 'Deshacer última acción (10 min)'}
+          </button>
+        </div>
       )}
 
       {/* ── Input area ── */}

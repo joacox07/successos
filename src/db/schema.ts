@@ -133,6 +133,19 @@ export const messages = sqliteTable('messages', {
   userTimestampIdx: index('messages_user_timestamp_idx').on(table.userId, table.timestamp),
 }));
 
+export const actionLogs = sqliteTable('action_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  undoToken: text('undo_token').notNull().unique(),
+  actionType: text('action_type').notNull(),
+  payload: text('payload', { mode: 'json' }).notNull(),
+  reversibleUntil: text('reversible_until').notNull(),
+  undone: integer('undone', { mode: 'boolean' }).default(false),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  userCreatedIdx: index('action_logs_user_created_idx').on(table.userId, table.createdAt),
+}));
+
 export const patterns = sqliteTable('patterns', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').notNull().references(() => users.id),
@@ -226,6 +239,17 @@ export const habitLogs = sqliteTable('habit_logs', {
 }, (table) => ({
   uniqueLog: uniqueIndex('habit_logs_unique_idx').on(table.habitId, table.date),
   userDateIdx: index('habit_logs_user_date_idx').on(table.userId, table.date),
+}));
+
+export const pendingHabitMinutesState = sqliteTable('pending_habit_minutes_state', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  habitId: integer('habit_id').notNull().references(() => habits.id),
+  targetDate: text('target_date').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  userIdx: uniqueIndex('pending_habit_minutes_state_user_idx').on(table.userId),
 }));
 
 export const habitCompetitions = sqliteTable('habit_competitions', {

@@ -85,8 +85,9 @@ export async function trackExtraction(
   timezone: string,
   extraction: ExtractionResult,
   messageId?: number,
+  resolvedDate?: string,
 ): Promise<void> {
-  const date = extraction.targetDate || getTodayDate(timezone);
+  const date = extraction.targetDate || resolvedDate || getTodayDate(timezone);
   const existing = await getTodayEntry(userId, date);
 
   const update: Record<string, unknown> = {};

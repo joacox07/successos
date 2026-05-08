@@ -41,6 +41,8 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newIsNegative, setNewIsNegative] = useState(false);
+  const [newIsTimed, setNewIsTimed] = useState(false);
+  const [newTargetMinutes, setNewTargetMinutes] = useState('');
   const [creating, setCreating] = useState(false);
 
   // Optimistic local state for today's completions
@@ -78,6 +80,8 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [editName, setEditName] = useState('');
   const [editIsNegative, setEditIsNegative] = useState(false);
+  const [editIsTimed, setEditIsTimed] = useState(false);
+  const [editTargetMinutes, setEditTargetMinutes] = useState('');
   const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
   const [menuHabitId, setMenuHabitId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -101,9 +105,14 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
       await api.createHabit({
         name: newName.trim(),
         isNegative: newIsNegative,
+        targetMinutes: !newIsNegative && newIsTimed && newTargetMinutes.trim()
+          ? Number(newTargetMinutes)
+          : null,
       });
       setNewName('');
       setNewIsNegative(false);
+      setNewIsTimed(false);
+      setNewTargetMinutes('');
       setShowForm(false);
       setLocalToday(null);
       refetch();
@@ -118,9 +127,17 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
   async function handleEditSave() {
     if (!editingHabit || !editName.trim()) return;
     try {
-      await api.updateHabit(editingHabit.id, { name: editName.trim(), isNegative: editIsNegative });
+      await api.updateHabit(editingHabit.id, {
+        name: editName.trim(),
+        isNegative: editIsNegative,
+        targetMinutes: !editIsNegative && editIsTimed && editTargetMinutes.trim()
+          ? Number(editTargetMinutes)
+          : null,
+      });
       setEditingHabit(null);
       setEditName('');
+      setEditIsTimed(false);
+      setEditTargetMinutes('');
       setLocalToday(null);
       refetch();
       notifyHabitsChanged();
@@ -195,13 +212,16 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
                     {habit.name}
                   </h3>
                   <p className="text-xs text-text-muted mt-0.5">
-                    {habit.isNegative ? 'Evitación · ' : ''}{habit.frequency === 'daily' ? 'Diario' : habit.frequency}
+                    {habit.isNegative ? 'Evitacion · ' : ''}
+                    {habit.targetMinutes && habit.targetMinutes > 0
+                      ? `${habit.targetMinutes} min`
+                      : (habit.frequency === 'daily' ? 'Diario' : habit.frequency)}
                   </p>
                 </div>
 
                 {/* Actions menu */}
                 <div className="relative shrink-0 flex items-center gap-1">
-                  {/* Trash — always visible */}
+                  {/* Trash - always visible */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -242,6 +262,8 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
                             setEditingHabit(habit);
                             setEditName(habit.name);
                             setEditIsNegative(!!habit.isNegative);
+                            setEditIsTimed(!habit.isNegative && !!habit.targetMinutes && habit.targetMinutes > 0);
+                            setEditTargetMinutes(habit.targetMinutes ? String(habit.targetMinutes) : '');
                             setMenuHabitId(null);
                           }}
                           className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-text-secondary hover:bg-white/[0.04] hover:text-text-primary transition-colors"
@@ -276,7 +298,7 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
                         : 'bg-accent-mint shadow-[0_0_10px_rgba(74,222,128,0.3)]'
                       : 'bg-white/[0.06] border border-white/[0.12] hover:border-white/[0.2]'
                   )}
-                  aria-label={completed ? 'Limpiar registro' : (habit.isNegative ? 'Marcar recaída' : 'Marcar éxito')}
+                  aria-label={completed ? 'Limpiar registro' : (habit.isNegative ? 'Marcar recaida' : 'Marcar exito')}
                 >
                   {completed && (
                     <svg
@@ -340,17 +362,57 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setNewIsNegative(v => !v)}
+                  onClick={() => {
+                    setNewIsNegative((v) => {
+                      const next = !v;
+                      if (next) {
+                        setNewIsTimed(false);
+                        setNewTargetMinutes('');
+                      }
+                      return next;
+                    });
+                  }}
                   className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all', newIsNegative ? 'bg-accent-coral/10 text-accent-coral border border-accent-coral/20' : 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:text-text-secondary')}
                 >
                   <Icon name={newIsNegative ? 'check' : 'x'} size={12} />
-                  {newIsNegative ? 'Hábito de evitación (marcar = recaída)' : 'Marcar como hábito de evitación'}
+                  {newIsNegative ? 'Habito de evitacion (marcar = recaida)' : 'Marcar como habito de evitacion'}
                 </button>
+                {!newIsNegative && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setNewIsTimed((v) => !v)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all border',
+                        newIsTimed
+                          ? 'bg-accent-mint/12 text-accent-mint border-accent-mint/25'
+                          : 'bg-white/[0.04] text-text-muted border-white/[0.06] hover:text-text-secondary'
+                      )}
+                    >
+                      <Icon name="clock" size={12} />
+                      {newIsTimed ? 'Hábito por tiempo activo' : 'Convertir en hábito por tiempo'}
+                    </button>
+                    {newIsTimed && (
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={newTargetMinutes}
+                        onChange={(e) => setNewTargetMinutes(e.target.value)}
+                        placeholder="Minutos objetivo (ej: 30)"
+                        className="w-full h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-mint/40 transition-colors"
+                      />
+                    )}
+                  </>
+                )}
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => {
                       setShowForm(false);
                       setNewName('');
+                      setNewIsNegative(false);
+                      setNewIsTimed(false);
+                      setNewTargetMinutes('');
                     }}
                     className="px-4 py-2 rounded-xl text-xs text-text-muted hover:text-text-secondary transition-colors"
                   >
@@ -403,12 +465,49 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
               />
               <button
                 type="button"
-                onClick={() => setEditIsNegative(v => !v)}
+                onClick={() => {
+                  setEditIsNegative((v) => {
+                    const next = !v;
+                    if (next) {
+                      setEditIsTimed(false);
+                      setEditTargetMinutes('');
+                    }
+                    return next;
+                  });
+                }}
                 className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all', editIsNegative ? 'bg-accent-coral/10 text-accent-coral border border-accent-coral/20' : 'bg-white/[0.04] text-text-muted border border-white/[0.06] hover:text-text-secondary')}
               >
                 <Icon name={editIsNegative ? 'check' : 'x'} size={12} />
-                {editIsNegative ? 'Hábito de evitación (marcar = recaída)' : 'Marcar como hábito de evitación'}
+                {editIsNegative ? 'Habito de evitacion (marcar = recaida)' : 'Marcar como habito de evitacion'}
               </button>
+              {!editIsNegative && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditIsTimed((v) => !v)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all border',
+                      editIsTimed
+                        ? 'bg-accent-mint/12 text-accent-mint border-accent-mint/25'
+                        : 'bg-white/[0.04] text-text-muted border-white/[0.06] hover:text-text-secondary'
+                    )}
+                  >
+                    <Icon name="clock" size={12} />
+                    {editIsTimed ? 'Hábito por tiempo activo' : 'Convertir en hábito por tiempo'}
+                  </button>
+                  {editIsTimed && (
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={editTargetMinutes}
+                      onChange={(e) => setEditTargetMinutes(e.target.value)}
+                      placeholder="Minutos objetivo (ej: 30)"
+                      className="w-full h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-mint/40 transition-colors"
+                    />
+                  )}
+                </>
+              )}
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setEditingHabit(null)}
@@ -479,3 +578,4 @@ export default function HabitsList({ onSelectHabit }: HabitsListProps) {
     </div>
   );
 }
+
