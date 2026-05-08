@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/Users/joaqu/OneDrive/Documentos/Succes OS/successos\" && npm install 2>&1)",
+      "Bash(where nvm:*)",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"/c/Users/joaqu/AppData/Roaming/nvm:$PATH\" && nvm install 20 2>&1)",
+      "Read(//c/Users/joaqu/AppData/Roaming/**)",
+      "Bash(\"C:/Users/joaqu/AppData/Roaming/nvm/nvm.exe\" install:*)",
+      "Bash(\"C:/Users/joaqu/AppData/Local/nvm/nvm.exe\" install:*)",
+      "Bash(cd \"C:/Users/joaqu/AppData/Local/nvm\" && ./nvm.exe install 20.19.2 2>&1)",
+      "Bash(export NVM_HOME=\"C:/Users/joaqu/AppData/Local/nvm\")",
+      "Read(//c/Users/joaqu/OneDrive/Documentos/Succes OS/**)",
+      "Bash(NVM_HOME=\"$NVM_HOME\" ./nvm.exe list)",
+      "Bash(./nvm.exe install:*)",
+      "Bash(./nvm.exe use:*)",
+      "Bash(\"C:/nvm4w/nodejs/node.exe\" -v 2>&1)",
+      "Bash(export PATH=\"/c/nvm4w/nodejs:$PATH\" && cd \"C:/Users/joaqu/OneDrive/Documentos/Succes OS/successos\" && rm -rf node_modules package-lock.json 2>/dev/null; npm install 2>&1)",
+      "Bash(export PATH=\"/c/nvm4w/nodejs:$PATH\" && cd \"C:/Users/joaqu/OneDrive/Documentos/Succes OS/successos\" && npx tsx src/index.ts 2>&1)",
+      "Bash(taskkill //F //IM node.exe 2>/dev/null; sleep 1; echo \"done\")",
+      "Bash(find 'C:\\\\Users\\\\joaqu\\\\OneDrive\\\\Documentos\\\\Succes OS\\\\successos\\\\web' -name tailwind.config.* -o -name vite.config.*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" --connect-timeout 10 http://146.235.245.149/)",
+      "Bash(python -c \":*)",
+      "Bash(pip install:*)",
+      "Bash(cd \"C:\\\\Users\\\\joaqu\\\\OneDrive\\\\Documentos\\\\Succes OS\\\\successos\" && npx tsx src/index.ts)",
+      "Bash(taskkill //F //PID 32856 2>/dev/null; echo \"killed\")",
+      "Bash(taskkill //F //PID 34744 2>/dev/null; echo \"killed\")",
+      "Bash(cd \"C:\\\\Users\\\\joaqu\\\\OneDrive\\\\Documentos\\\\Succes OS\\\\successos\" && npx tsx src/index.ts 2>&1)",
+      "Bash(taskkill //F //PID 26164 2>/dev/null; echo \"killed\")",
+      "Bash(cd \"C:\\\\Users\\\\joaqu\\\\OneDrive\\\\Documentos\\\\Succes OS\\\\successos\" && npm install qrcode-terminal 2>&1 | tail -3)",
+      "Bash(cd \"/c/Users/joaqu/OneDrive/Documentos/Succes OS\" && npx sharp-cli -i successos-logo.svg -o successos-logo.jpg --format jpg --quality 95 -- resize 512 512 2>&1)"
+    ]
+  }
+}
