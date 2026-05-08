@@ -75,10 +75,19 @@ export function CheckinFab({ onOpenChat, onOpenQuick, routeKey }: CheckinFabProp
 
       <button
         onClick={() => setOpen((current) => !current)}
-        className="h-14 w-14 rounded-full border border-white/[0.2] bg-[#0b0f19]/95 backdrop-blur-xl shadow-lg flex items-center justify-center active:scale-[0.96] transition-transform"
+        className="h-14 w-14 rounded-full border bg-[#0b0f19]/95 backdrop-blur-xl shadow-lg flex items-center justify-center active:scale-[0.96] transition-transform"
+        style={{
+          borderColor: 'rgb(var(--color-accent-primary) / 0.35)',
+          boxShadow: '0 0 0 1px rgb(var(--color-accent-primary) / 0.18), 0 12px 24px rgba(0,0,0,0.4), 0 0 24px rgb(var(--color-accent-primary) / 0.24)',
+        }}
         aria-label="Abrir menu de check-in"
       >
-        <img src="/icon-192.png" alt="Success OS" className="h-8 w-8 rounded-full object-cover" />
+        <div
+          className="h-9 w-9 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'rgb(var(--color-accent-primary) / 0.14)' }}
+        >
+          <img src="/icon-192.png" alt="Success OS" className="h-7 w-7 rounded-full object-cover" />
+        </div>
       </button>
     </div>
   );
