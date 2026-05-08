@@ -761,35 +761,6 @@ export default function CompetitionsPage() {
           <KpiCard label="Recaídas" value={`${competitionStats.summary.negativeCount}`} helper="Cantidad total de recaídas registradas." tone="coral" />
         </div>
 
-        <Card className="bg-white/[0.02]">
-          <SectionTitle title="Como se calculan tus puntos" subtitle={`Rango actual: ${range === 'week' ? 'semana' : range === 'month' ? 'mes' : 'total'}. Los habitos vinculados se leen desde tu tracker personal.`} />
-          <div className="mt-4 grid gap-2">
-            {competitionStats.habits.map((habit) => (
-              <div key={habit.habitId} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-text-primary">{habit.name}</p>
-                    <p className="mt-1 text-xs text-text-secondary">
-                      {habit.kind === 'duration'
-                        ? `${habit.minutesPerBlock ?? 30} min = ${habit.pointsPerBlock ?? 1} pt - ${habit.totalMinutes} min cargados`
-                        : habit.scoringMode === 'negative_only'
-                          ? `Evitacion: limpio por defecto, recaida -${habit.pointsNegative} pts`
-                          : habit.scoringMode === 'both'
-                            ? `Exito ${habit.pointsPositive} pts - recaida -${habit.pointsNegative} pts`
-                            : `Exito ${habit.pointsPositive} pts`}
-                    </p>
-                  </div>
-                  <div className="text-right text-xs font-mono">
-                    <p className="text-accent-mint">{habit.positiveCount} exitos</p>
-                    <p className="text-accent-coral">{habit.negativeCount} recaidas</p>
-                    <p className="text-text-primary">{formatSigned(habit.netPoints)} pts</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
         <Card>
           <SectionTitle title="Evolución" subtitle="Puntos acumulados por participante." />
           <div className="mt-4 h-72">
