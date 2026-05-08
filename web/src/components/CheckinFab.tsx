@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Icon from '@/components/Icon';
 
 type CheckinFabProps = {
   onOpenChat: () => void;
@@ -86,7 +87,11 @@ export function CheckinFab({ onOpenChat, onOpenQuick, routeKey }: CheckinFabProp
           className="h-9 w-9 rounded-full flex items-center justify-center"
           style={{ backgroundColor: 'rgb(var(--color-accent-primary) / 0.14)' }}
         >
-          <img src="/icon-192.png" alt="Success OS" className="h-7 w-7 rounded-full object-cover" />
+          <Icon
+            name="target"
+            size={21}
+            style={{ color: 'rgb(var(--color-accent-primary))' }}
+          />
         </div>
       </button>
     </div>
