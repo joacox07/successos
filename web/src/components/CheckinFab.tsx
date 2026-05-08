@@ -47,14 +47,14 @@ export function CheckinFab({ onOpenChat, onOpenQuick, routeKey }: CheckinFabProp
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.16 }}
-            className="absolute bottom-16 right-0 min-w-[180px] rounded-2xl border border-white/[0.14] bg-bg-card/95 backdrop-blur-xl shadow-xl p-2"
+            className="absolute bottom-16 right-0 min-w-[190px] rounded-2xl border border-white/[0.12] bg-[#0b0f19]/96 backdrop-blur-xl shadow-[0_18px_40px_rgba(0,0,0,0.45)] p-2"
           >
             <button
               onClick={() => {
                 setOpen(false);
                 onOpenChat();
               }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-text-primary hover:bg-white/[0.06] transition-colors"
+              className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-white hover:bg-white/[0.08] transition-colors"
               aria-label="Abrir Coach en modo chat"
             >
               Coach (chat)
@@ -64,7 +64,7 @@ export function CheckinFab({ onOpenChat, onOpenQuick, routeKey }: CheckinFabProp
                 setOpen(false);
                 onOpenQuick();
               }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-text-primary hover:bg-white/[0.06] transition-colors"
+              className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-white hover:bg-white/[0.08] transition-colors"
               aria-label="Abrir check-in rapido"
             >
               Check-in rapido
@@ -75,7 +75,7 @@ export function CheckinFab({ onOpenChat, onOpenQuick, routeKey }: CheckinFabProp
 
       <button
         onClick={() => setOpen((current) => !current)}
-        className="h-14 w-14 rounded-full border border-white/[0.18] bg-bg-card/95 backdrop-blur-xl shadow-lg flex items-center justify-center active:scale-[0.96] transition-transform"
+        className="h-14 w-14 rounded-full border border-white/[0.2] bg-[#0b0f19]/95 backdrop-blur-xl shadow-lg flex items-center justify-center active:scale-[0.96] transition-transform"
         aria-label="Abrir menu de check-in"
       >
         <img src="/icon-192.png" alt="Success OS" className="h-8 w-8 rounded-full object-cover" />

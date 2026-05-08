@@ -266,7 +266,6 @@ export default function CompetitionsPage() {
   const [selectedHabitId, setSelectedHabitId] = useState<number | null>(null);
   const [rivalA, setRivalA] = useState<number | null>(null);
   const [rivalB, setRivalB] = useState<number | null>(null);
-  const [openHabitEditorId, setOpenHabitEditorId] = useState<number | null>(null);
   const [inviteSectionOpen, setInviteSectionOpen] = useState(false);
   const [sharedHabitsSectionOpen, setSharedHabitsSectionOpen] = useState(false);
   const [editingHabitId, setEditingHabitId] = useState<number | null>(null);
@@ -638,7 +637,6 @@ export default function CompetitionsPage() {
     setEditingMinutesPerBlock(habit.minutesPerBlock ?? 30);
     setEditingPointsPerBlock(habit.pointsPerBlock ?? 1);
     setEditingDailyTargetMinutes(habit.dailyTargetMinutes ? String(habit.dailyTargetMinutes) : '');
-    setOpenHabitEditorId(habit.id);
   }
 
   async function handleSaveHabit(habitId: number) {
@@ -674,7 +672,6 @@ export default function CompetitionsPage() {
     try {
       await api.deleteCompetitionHabit(selectedCompetitionId, habitId);
       if (selectedHabitId === habitId) setSelectedHabitId(null);
-      if (openHabitEditorId === habitId) setOpenHabitEditorId(null);
       if (editingHabitId === habitId) setEditingHabitId(null);
       setRefreshToken((current) => current + 1);
     } catch (err) {
@@ -1300,10 +1297,7 @@ export default function CompetitionsPage() {
                     <div className="space-y-4">
                       {competitionDetail.habits.map((habit) => (
                         <div key={habit.id} className="rounded-3xl border border-white/[0.06] bg-white/[0.03]">
-                          <button
-                            onClick={() => setOpenHabitEditorId((current) => current === habit.id ? null : habit.id)}
-                            className="flex w-full items-center justify-between gap-3 p-4 text-left"
-                          >
+                          <div className="flex w-full items-center justify-between gap-3 p-4 text-left">
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-text-primary">{habit.name}</p>
                               <p className="mt-1 text-xs text-text-secondary">{habit.description || durationConfigLabel(habit)}</p>
@@ -1325,12 +1319,9 @@ export default function CompetitionsPage() {
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="text-xs text-text-muted">{statusLabel(habit)}</span>
-                              <span className="text-text-secondary">{openHabitEditorId === habit.id ? '−' : '+'}</span>
                             </div>
-                          </button>
-
-                          {openHabitEditorId === habit.id ? (
-                            <div className="border-t border-white/[0.06] px-4 pb-4 pt-4">
+                          </div>
+                          <div className="border-t border-white/[0.06] px-4 pb-4 pt-4">
                               <div className="mb-4 flex flex-wrap items-center gap-2">
                                 <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">Registrar en</span>
                                 {retroDateOptions().map((option) => (
@@ -1524,7 +1515,6 @@ export default function CompetitionsPage() {
 
                               <div className="mt-4">{renderLinkControls(habit, competitionDetail.personalHabits)}</div>
                             </div>
-                          ) : null}
                         </div>
                       ))}
                     </div>
